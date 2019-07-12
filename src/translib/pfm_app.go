@@ -266,7 +266,7 @@ func getSysEepromFromFile (eeprom *ocbinds.OpenconfigPlatform_Components_Compone
 	if jsoneeprom.Diag_Version != "" {
 	}
 	if jsoneeprom.Service_Tag != "" {
-            if eeprom.SerialNo == "" {
+            if eeprom.SerialNo == nil {
                 eeprom.SerialNo = &jsoneeprom.Service_Tag
             }
 	}
