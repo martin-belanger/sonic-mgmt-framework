@@ -262,6 +262,9 @@ func getSysEepromFromFile (eeprom *ocbinds.OpenconfigPlatform_Components_Compone
 	if jsoneeprom.Manufacture_Country != "" {
 	}
 	if jsoneeprom.Vendor_Name != "" {
+            if eeprom.MfgName == nil {
+                eeprom.MfgName = &jsoneeprom.Vendor_Name
+            }
 	}
 	if jsoneeprom.Diag_Version != "" {
 	}
