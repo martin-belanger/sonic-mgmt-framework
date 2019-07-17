@@ -18,6 +18,13 @@ def filter_json_value(value):
     for key,val in value.items():
         if key in blocked_fields:
             del value[key]
+        else:
+	    temp = key.split('_')
+	    alt_key = ''
+	    for i in temp:
+		alt_key = alt_key + i.capitalize() + ' '
+	    value[alt_key]=value.pop(key)
+     	
     return value
 
 def register(func):

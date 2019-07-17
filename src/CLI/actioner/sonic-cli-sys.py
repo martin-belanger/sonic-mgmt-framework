@@ -13,15 +13,25 @@ urllib3.disable_warnings()
 
 
 plugins = dict()
+
+def util_capitalize(value):
+    for key,val in value.items():
+        temp = key.split('_')
+        alt_key = ''
+        for i in temp:
+        	alt_key = alt_key + i.capitalize() + ' '
+        value[alt_key]=value.pop(key)
+    return value
+    
 def system_state_key_change(value):
     value.pop('motd_banner')
     value.pop('login_banner')
-    return value
+    return util_capitalize(value)
 
 
 def memory_key_change(value):
     value['Total']=value.pop('physical')
-    value['used']=value.pop('reserved')
+    value['Used']=value.pop('reserved')
     return value
 
 def register(func):
@@ -101,7 +111,7 @@ def run(func, args):
 		else:
 		    for proc in value['process']:
 			if proc['pid'] == int(sys.argv[3]):
-			    show_cli_output(sys.argv[2],proc['state'])
+			    show_cli_output(sys.argv[2],util_capitalize(proc['state']))
 			    return
 	    	    print("command works")	
             else:
