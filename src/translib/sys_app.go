@@ -139,28 +139,84 @@ func (app *SysApp) doGetSystem(path string) (GetResponse, error)  {
         return GetResponse{Payload: payload}, err
     }
     sysObj := app.getAppRootObject()
-    ygot.BuildEmptyTree(sysObj)
 
-    switch path {
-        case "/openconfig-system:system/state":
-            getSystemState(&jsonsystem, sysObj.State)
-        case "/openconfig-system:system/memory":
-            sysObj.Memory.State = &ocbinds.OpenconfigSystem_System_Memory_State{}
-            getSystemMemory(&jsonsystem, sysObj.Memory.State)
-        case "/openconfig-system:system/cpus" :
-            getSystemCpus(&jsonsystem, sysObj.Cpus)
-        case "/openconfig-system:system/processes":
-            getSystemProcesses(&jsonsystem, sysObj.Processes)
-        case "/openconfig-system:system":
-            getSystemState(&jsonsystem, sysObj.State)
-            getSystemMemory(&jsonsystem, sysObj.Memory.State)
-            getSystemCpus(&jsonsystem, sysObj.Cpus)
-            getSystemProcesses(&jsonsystem, sysObj.Processes)
+    targetUriPath, perr := getYangPathFromUri(app.path.Path)
+    if perr != nil {
+        log.Infof("getYangPathFromUri failed.")
+        return GetResponse{Payload: payload}, err
     }
-    if path == "/openconfig-system:system" {
+
+    log.Infof("targetUriPath : ", targetUriPath, "Args: ", app.path.Vars)
+
+    if isSubtreeRequest(targetUriPath, "/openconfig-system:system/state") {
+        ygot.BuildEmptyTree(sysObj)
+        app.getSystemState(&jsonsystem, sysObj.State)
+        if targetUriPath == "/openconfig-system:system/state" {
+            payload, err = dumpIetfJson(sysObj, false)
+        } else {
+            payload, err = dumpIetfJson(sysObj.State, false)
+        }
+    } else if isSubtreeRequest(targetUriPath, "/openconfig-system:system/memory") {
+        ygot.BuildEmptyTree(sysObj)
+        sysObj.Memory.State = &ocbinds.OpenconfigSystem_System_Memory_State{}
+        app.getSystemMemory(&jsonsystem, sysObj.Memory.State)
+        if targetUriPath == "/openconfig-system:system/memory" {
+            payload, err = dumpIetfJson(sysObj, false)
+        } else if targetUriPath == "/openconfig-system:system/memory/state" {
+            payload, err = dumpIetfJson(sysObj.Memory, false)
+        } else {
+            payload, err = dumpIetfJson(sysObj.Memory.State, false)
+        }
+    } else if isSubtreeRequest(targetUriPath, "/openconfig-system:system/cpus") {
+        ygot.BuildEmptyTree(sysObj)
+        var index ocbinds.OpenconfigSystem_System_Cpus_Cpu_State_Index_Union_Uint32
+        app.getSystemCpus(&jsonsystem, sysObj.Cpus)
+        if targetUriPath == "/openconfig-system:system/cpus" {
+            payload, err = dumpIetfJson(sysObj, false)
+        } else if targetUriPath == "/openconfig-system:system/cpus/cpu" {
+            payload, err = dumpIetfJson(sysObj.Cpus, false)
+        } else {
+            idx := 0
+            index.Uint32 = uint32(idx)
+            payload, err = dumpIetfJson(sysObj.Cpus.Cpu[&index], false)
+        }
+    } else if isSubtreeRequest(targetUriPath, "/openconfig-system:system/processes"){
+        if targetUriPath == "/openconfig-system:system/processes" {
+            ygot.BuildEmptyTree(sysObj)
+            app.getSystemProcesses(&jsonsystem, sysObj.Processes, false)
+            payload, err = dumpIetfJson(sysObj, false)
+        } else if targetUriPath == "/openconfig-system:system/processes/process" {
+            pid, perr := app.path.IntVar("pid")
+            if perr == nil {
+                if pid == 0 {
+                    ygot.BuildEmptyTree(sysObj)
+                    app.getSystemProcesses(&jsonsystem, sysObj.Processes, false)
+                    payload, err = dumpIetfJson(sysObj.Processes, false)
+                } else {
+                    app.getSystemProcesses(&jsonsystem, sysObj.Processes, true)
+                    payload, err = dumpIetfJson(sysObj.Processes, false)
+                }
+            }
+        } else if targetUriPath == "/openconfig-system:system/processes/process/state" {
+            pid, _ := app.path.IntVar("pid")
+            app.getSystemProcesses(&jsonsystem, sysObj.Processes, true)
+            payload, err = dumpIetfJson(sysObj.Processes.Process[uint64(pid)], true)
+        } else if isSubtreeRequest(targetUriPath, "/openconfig-system:system/processes/process/state"){
+            pid, _ := app.path.IntVar("pid")
+            app.getSystemProcesses(&jsonsystem, sysObj.Processes, true)
+            payload, err = dumpIetfJson(sysObj.Processes.Process[uint64(pid)].State, true)
+        }
+    } else if targetUriPath == "/openconfig-system:system" {
+        ygot.BuildEmptyTree(sysObj)
+        sysObj.Memory.State = &ocbinds.OpenconfigSystem_System_Memory_State{}
+        app.getSystemState(&jsonsystem, sysObj.State)
+        app.getSystemMemory(&jsonsystem, sysObj.Memory.State)
+        app.getSystemCpus(&jsonsystem, sysObj.Cpus)
+        app.getSystemProcesses(&jsonsystem, sysObj.Processes, false)
         payload, err = dumpIetfJson((*app.ygotRoot).(*ocbinds.Device), true)
     } else {
-        payload, err = dumpIetfJson(sysObj, false)
+        err = errors.New("Not implemented doGetSystem, path: ")
+        return  GetResponse{Payload: payload}, err
     }
     return  GetResponse{Payload: payload}, err
 }
@@ -215,25 +271,61 @@ func getSystemInfoFromFile () (JSONSystem, error) {
     return jsonsystem, nil
 }
 
-func getSystemState (sys *JSONSystem, sysstate *ocbinds.OpenconfigSystem_System_State) () {
+func (app *SysApp) getSystemState (sys *JSONSystem, sysstate *ocbinds.OpenconfigSystem_System_State) () {
     log.Infof("getSystemState Entry")
 
-    sysstate.Hostname = &sys.Hostname
-    crtime := time.Now().Format(time.RFC3339) + "+00:00"
-    sysstate.CurrentDatetime = &crtime;
-    sysinfo := syscall.Sysinfo_t{}
-    sys_err := syscall.Sysinfo(&sysinfo)
-    if sys_err == nil {
-        boot_time := uint64 (time.Now().Unix() - sysinfo.Uptime)
-        sysstate.BootTime = &boot_time
+    targetUriPath, perr := getYangPathFromUri(app.path.Path)
+    if perr != nil {
+        log.Infof("getYangPathFromUri failed.")
+        return
     }
 
+    crtime := time.Now().Format(time.RFC3339) + "+00:00"
+
+    switch targetUriPath {
+    case "/openconfig-system:system/state/hostname":
+        sysstate.Hostname = &sys.Hostname
+    case "/openconfig-system:system/state/current-datetime":
+        sysstate.CurrentDatetime = &crtime;
+    case "/openconfig-system:system/state/boot-time":
+        sysinfo := syscall.Sysinfo_t{}
+        sys_err := syscall.Sysinfo(&sysinfo)
+        if sys_err == nil {
+            boot_time := uint64 (time.Now().Unix() - sysinfo.Uptime)
+            sysstate.BootTime = &boot_time
+        }
+    case "/openconfig-system:system/state":
+        sysstate.Hostname = &sys.Hostname
+        sysstate.CurrentDatetime = &crtime;
+        sysinfo := syscall.Sysinfo_t{}
+        sys_err := syscall.Sysinfo(&sysinfo)
+        if sys_err == nil {
+            boot_time := uint64 (time.Now().Unix() - sysinfo.Uptime)
+            sysstate.BootTime = &boot_time
+        }
+    }
 }
 
-func getSystemMemory (sys *JSONSystem, sysmem *ocbinds.OpenconfigSystem_System_Memory_State) () {
+func (app *SysApp) getSystemMemory (sys *JSONSystem, sysmem *ocbinds.OpenconfigSystem_System_Memory_State) () {
     log.Infof("getSystemMemory Entry")
-    sysmem.Physical = &sys.Total
-    sysmem.Reserved = &sys.Used
+
+    targetUriPath, perr := getYangPathFromUri(app.path.Path)
+    if perr != nil {
+        log.Infof("getYangPathFromUri failed.")
+        return
+    }
+
+    switch targetUriPath {
+    case "/openconfig-system:system/memory":
+        fallthrough
+    case "/openconfig-system:system/memory/state":
+        sysmem.Physical = &sys.Total
+        sysmem.Reserved = &sys.Used
+    case "/openconfig-system:system/memory/state/physical":
+        sysmem.Physical = &sys.Total
+    case "/openconfig-system:system/memory/state/reserved":
+        sysmem.Reserved = &sys.Used
+    }
 }
 
 type CpuState struct {
@@ -242,7 +334,7 @@ type CpuState struct {
     idle   uint8
 }
 
-func getSystemCpus (sys *JSONSystem, syscpus *ocbinds.OpenconfigSystem_System_Cpus) {
+func (app *SysApp) getSystemCpus (sys *JSONSystem, syscpus *ocbinds.OpenconfigSystem_System_Cpus) {
     log.Infof("getSystemCpus Entry")
 
     sysinfo := syscall.Sysinfo_t{}
@@ -289,28 +381,48 @@ type ProcessState struct {
     StartTime         uint64
     Uptime            uint64
 }
-func getSystemProcesses (sys *JSONSystem, sysprocs *ocbinds.OpenconfigSystem_System_Processes) {
-    log.Infof("getSystemProcesses Entry")
 
-    for  pidstr,  proc := range sys.Procs {
-        idx,_ := strconv.Atoi(pidstr)
-        sysproc, err := sysprocs.NewProcess(uint64 (idx))
-        if err != nil {
-            log.Infof("sysprocs.NewProcess failed")
-            return
-        }
+func (app *SysApp) getSystemProcess (proc *Proc, sysproc *ocbinds.OpenconfigSystem_System_Processes_Process, pid uint64) {
 
-        var procstate ProcessState
-        procstate.CpuUsageUser = proc.User
-        procstate.CpuUsageSystem = proc.System
-        procstate.MemoryUsage  = proc.Mem * 1024
-        procstate.MemoryUtilization = uint8(proc.Memutil)
-        procstate.CpuUtilization  = uint8(proc.Cputil)
-        procstate.Name = proc.Cmd
-        procstate.Pid = uint64 (idx)
-        procstate.StartTime = proc.Start * 1000000000  // ns
-        procstate.Uptime = uint64(time.Now().Unix()) - proc.Start
-        ygot.BuildEmptyTree(sysproc)
+    var procstate ProcessState
+
+    ygot.BuildEmptyTree(sysproc)
+    procstate.CpuUsageUser = proc.User
+    procstate.CpuUsageSystem = proc.System
+    procstate.MemoryUsage  = proc.Mem * 1024
+    procstate.MemoryUtilization = uint8(proc.Memutil)
+    procstate.CpuUtilization  = uint8(proc.Cputil)
+    procstate.Name = proc.Cmd
+    procstate.Pid = pid
+    procstate.StartTime = proc.Start * 1000000000  // ns
+    procstate.Uptime = uint64(time.Now().Unix()) - proc.Start
+
+    targetUriPath, perr := getYangPathFromUri(app.path.Path)
+    if perr != nil {
+        log.Infof("getYangPathFromUri failed.")
+        return
+    }
+
+    switch targetUriPath {
+
+    case "/openconfig-system:system/processes/process/state/name":
+        sysproc.State.Name = &procstate.Name
+    case "/openconfig-system:system/processes/process/state/args":
+    case "/openconfig-system:system/processes/process/state/start-time":
+        sysproc.State.StartTime = &procstate.StartTime
+    case "/openconfig-system:system/processes/process/state/uptime":
+        sysproc.State.Uptime = &procstate.Uptime
+    case "/openconfig-system:system/processes/process/state/cpu-usage-user":
+        sysproc.State.CpuUsageUser = &procstate.CpuUsageUser
+    case "/openconfig-system:system/processes/process/state/cpu-usage-system":
+        sysproc.State.CpuUsageSystem = &procstate.CpuUsageSystem
+    case "/openconfig-system:system/processes/process/state/cpu-utilization":
+        sysproc.State.CpuUtilization =  &procstate.CpuUtilization
+    case "/openconfig-system:system/processes/process/state/memory-usage":
+        sysproc.State.MemoryUsage = &procstate.MemoryUsage
+    case "/openconfig-system:system/processes/process/state/memory-utilization":
+        sysproc.State.MemoryUtilization = &procstate.MemoryUtilization
+    default:
         sysproc.Pid = &procstate.Pid 
         sysproc.State.CpuUsageSystem = &procstate.CpuUsageSystem
         sysproc.State.CpuUsageUser = &procstate.CpuUsageUser
@@ -321,6 +433,32 @@ func getSystemProcesses (sys *JSONSystem, sysprocs *ocbinds.OpenconfigSystem_Sys
         sysproc.State.Pid = &procstate.Pid
         sysproc.State.StartTime = &procstate.StartTime
         sysproc.State.Uptime = &procstate.Uptime
+    }
+}
+
+func (app *SysApp) getSystemProcesses (sys *JSONSystem, sysprocs *ocbinds.OpenconfigSystem_System_Processes, ispid bool) {
+    log.Infof("getSystemProcesses Entry")
+
+    if ispid == true {
+        proc := sys.Procs[app.path.Var("pid")]
+        pid,_ := app.path.IntVar("pid")
+        sysproc := sysprocs.Process[uint64(pid)]
+
+        app.getSystemProcess(&proc, sysproc, uint64(pid))
+
+    } else {
+
+        for  pidstr,  proc := range sys.Procs {
+            idx, _:= strconv.Atoi(pidstr)
+
+            sysproc, err := sysprocs.NewProcess(uint64 (idx))
+            if err != nil {
+                log.Infof("sysprocs.NewProcess failed")
+                return
+            }
+
+            app.getSystemProcess(&proc, sysproc, uint64 (idx))
+        }
     }
     return
 }
