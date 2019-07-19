@@ -143,7 +143,7 @@ func (app *SysApp) doGetSystem(path string) (GetResponse, error)  {
     targetUriPath, perr := getYangPathFromUri(app.path.Path)
     if perr != nil {
         log.Infof("getYangPathFromUri failed.")
-        return GetResponse{Payload: payload}, err
+        return GetResponse{Payload: payload}, perr
     }
 
     log.Infof("targetUriPath : ", targetUriPath, "Args: ", app.path.Vars)
