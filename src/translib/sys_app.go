@@ -57,6 +57,12 @@ func (app *SysApp) getAppRootObject() (*ocbinds.OpenconfigSystem_System) {
 	return deviceObj.System
 }
 
+func (app *SysApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationOpts, *notificationInfo, error) {
+
+    var err error
+    return nil, nil, err
+}
+
 func (app *SysApp) translateCreate(d *db.DB) ([]db.WatchKeys, error)  {
     var err error
     var keys []db.WatchKeys

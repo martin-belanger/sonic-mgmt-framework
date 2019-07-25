@@ -54,6 +54,12 @@ func (app *PlatformApp) getAppRootObject() (*ocbinds.OpenconfigPlatform_Componen
     return deviceObj.Components
 }
 
+func (app *PlatformApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationOpts, *notificationInfo, error) {
+
+    var err error
+    return nil, nil, err
+
+}
 func (app *PlatformApp) translateCreate(d *db.DB) ([]db.WatchKeys, error)  {
     var err error
     var keys []db.WatchKeys
