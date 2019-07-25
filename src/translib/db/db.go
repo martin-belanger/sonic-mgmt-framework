@@ -13,7 +13,7 @@ Example:
 
  * Initialization:
 
-        d := db.NewDB(db.Options {
+        d, _ := db.NewDB(db.Options {
                         DBNo              : db.ConfigDB,
                         InitIndicator     : "CONFIG_DB_INITIALIZED",
                         TableNameSeparator: "|",
@@ -67,7 +67,8 @@ Example:
                         },
                 }
 
-        d.StartTx([]db.WatchKeys { {Ts: &tsr, Key: &rkey} })
+        d.StartTx([]db.WatchKeys { {Ts: &tsr, Key: &rkey} },
+                  []*db.TableSpec { &tsa, &tsr })
 
         d.SetEntry( &tsa, akey, avalue)
         d.SetEntry( &tsr, rkey, rvalue)
@@ -76,7 +77,8 @@ Example:
 
  * Transaction Abort
 
-        d.StartTx([]db.WatchKeys { {Ts: &tsr, Key: &rkey} })
+        d.StartTx([]db.WatchKeys {},
+                  []*db.TableSpec { &tsa, &tsr })
         d.DeleteEntry( &tsa, rkey)
         d.AbortTx()
 
@@ -95,6 +97,7 @@ import (
 	"github.com/go-redis/redis"
 	"github.com/golang/glog"
 	"cvl"
+	"translib/tlerr"
 )
 
 const (
@@ -121,6 +124,10 @@ const (
 	// All DBs added above this line, please ----
 	MaxDB // 7 The Number of DBs
 )
+
+func(dbNo DBNum) String() string {
+	return fmt.Sprintf("%d", dbNo)
+}
 
 // Options gives parameters for opening the redis client.
 type Options struct {
@@ -170,12 +177,21 @@ const (
 // (Eg: { Name: ACL_TABLE" }).
 type TableSpec struct {
 	Name string
+	// https://github.com/project-arlo/sonic-mgmt-framework/issues/29
+	// CompCt tells how many components in the key. Only the last component
+	// can have TableSeparator as part of the key. Otherwise, we cannot
+	// tell where the key component begins.
+	CompCt	int
 }
 
 // Key gives the key components.
 // (Eg: { Comp : [] string { "acl1", "rule1" } } ).
 type Key struct {
 	Comp []string
+}
+
+func (k Key) String() string {
+	return fmt.Sprintf("{ Comp: %v }", k.Comp)
 }
 
 // Value gives the fields as a map.
@@ -199,6 +215,7 @@ type Value struct {
 //                          },
 //                          }
 //        })
+
 type Table struct {
 	ts    *TableSpec
 	entry map[string]Value
@@ -228,7 +245,14 @@ type DB struct {
 
 	txState _txState
 	txCmds  []_txCmd
+	cv *cvl.CVL
 	cvlEditConfigData [] cvl.CVLEditConfigData
+
+	sKeys []SKey                // Subscribe Key array
+	sHandler HFunc              // Handler Function
+	sCh <-chan *redis.Message   // non-Nil implies SubscribeDB
+	sPubSub *redis.PubSub       // PubSub
+	sCIP bool                   // Close in Progress
 }
 
 func (d DB) String() string {
@@ -237,7 +261,10 @@ func (d DB) String() string {
 }
 
 // NewDB is the factory method to create new DB's.
-func NewDB(opt Options) *DB {
+func NewDB(opt Options) (*DB, error) {
+
+	var e error
+
 	if glog.V(3) {
 		glog.Info("NewDB: Begin: opt: ", opt)
 	}
@@ -262,6 +289,7 @@ func NewDB(opt Options) *DB {
 
 	if d.client == nil {
 		glog.Error("NewDB: Could not create redis client")
+		e = tlerr.TranslibDBCannotOpen { }
 		goto NewDBExit
 	}
 
@@ -279,6 +307,7 @@ func NewDB(opt Options) *DB {
 	} else if init, _ := d.client.Get(d.Opts.InitIndicator).Int(); init != 1 {
 
 		glog.Error("NewDB: Database not inited")
+		e = tlerr.TranslibDBNotInit { }
 		goto NewDBExit
 	}
 
@@ -287,10 +316,10 @@ NewDBSkipInitIndicatorCheck:
 NewDBExit:
 
 	if glog.V(3) {
-		glog.Info("NewDB: End: d: ", d)
+		glog.Info("NewDB: End: d: ", d, " e: ", e)
 	}
 
-	return &d
+	return &d, e
 }
 
 // DeleteDB is the gentle way to close the DB connection.
@@ -325,8 +354,21 @@ func (d *DB) redis2key(ts *TableSpec, redisKey string) Key {
 
 	splitTable := strings.SplitN(redisKey, d.Opts.TableNameSeparator, 2)
 
-	return Key{strings.Split(splitTable[1], d.Opts.KeySeparator)}
+	if ts.CompCt > 0 {
+		return Key{strings.SplitN(splitTable[1],d.Opts.KeySeparator, ts.CompCt)}
+	} else {
+		return Key{strings.Split(splitTable[1], d.Opts.KeySeparator)}
+	}
 
+}
+
+func (d *DB) ts2redisUpdated(ts *TableSpec) string {
+
+	if glog.V(5) {
+		glog.Info("ts2redisUpdated: Begin: ", ts.Name)
+	}
+
+	return string("CONFIG_DB_UPDATED_") + ts.Name
 }
 
 // GetEntry retrieves an entry(row) from the table.
@@ -354,7 +396,8 @@ func (d *DB) GetEntry(ts *TableSpec, key Key) (Value, error) {
 		if glog.V(4) {
 			glog.Info("GetEntry: HGetAll(): empty map")
 		}
-		e = errors.New("Entry does not exist")
+		// e = errors.New("Entry does not exist")
+		e = tlerr.TranslibRedisClientEntryNotExist { Entry: d.key2redis(ts, key) }
 	}
 
 	if glog.V(3) {
@@ -429,6 +472,7 @@ func (d *DB) doCVL(ts * TableSpec, cvlOps []cvl.CVLOperation, key Key, vals []Va
 	var e error = nil
 
 	var cvlRetCode cvl.CVLRetCode
+	var cei cvl.CVLErrorInfo
 
 	// No Transaction case. No CVL.
 	if d.txState == txStateNone {
@@ -473,11 +517,13 @@ func (d *DB) doCVL(ts * TableSpec, cvlOps []cvl.CVLOperation, key Key, vals []Va
 		glog.Info("doCVL: calling ValidateEditConfig: ", d.cvlEditConfigData)
 	}
 
-	cvlRetCode = cvl.ValidateEditConfig(d.cvlEditConfigData)
+	cei, cvlRetCode = d.cv.ValidateEditConfig(d.cvlEditConfigData)
 
 	if cvl.CVL_SUCCESS != cvlRetCode {
 		glog.Error("doCVL: CVL Failure: " , cvlRetCode)
-		e = errors.New("CVL Failure: " + string(cvlRetCode))
+		// e = errors.New("CVL Failure: " + string(cvlRetCode))
+		e = tlerr.TranslibCVLFailure { Code: int(cvlRetCode),
+					CVLErrorInfo: cei }
 		glog.Error("doCVL: " , len(d.cvlEditConfigData), len(cvlOps))
 		d.cvlEditConfigData = d.cvlEditConfigData[:len(d.cvlEditConfigData) - len(cvlOps)]
 	} else {
@@ -818,7 +864,7 @@ func (d *DB) DeleteTable(ts *TableSpec) error {
 	// Read Keys
 	keys, e := d.GetKeys(ts)
 	if e != nil {
-		glog.Error("GetTable: GetKeys: " + e.Error())
+		glog.Error("DeleteTable: GetKeys: " + e.Error())
 		goto DeleteTableExit
 	}
 
@@ -827,7 +873,7 @@ func (d *DB) DeleteTable(ts *TableSpec) error {
 	for i := 0; i < len(keys); i++ {
 		e := d.DeleteEntry(ts, keys[i])
 		if e != nil {
-			glog.Warning("GetTable: GetKeys: " + e.Error())
+			glog.Warning("DeleteTable: DeleteEntry: " + e.Error())
 			continue
 		}
 	}
@@ -979,14 +1025,37 @@ func (w WatchKeys) String() string {
 	return fmt.Sprintf("{ Ts: %v, Key: %v }", w.Ts, w.Key)
 }
 
+// Convenience function to make TableSpecs from strings.
+// This only works on Tables having key components without TableSeparator
+// as part of the key.
+func Tables2TableSpecs(tables []string) []* TableSpec {
+	var tss []*TableSpec
+
+	tss = make([]*TableSpec, 0, len(tables))
+
+	for i := 0; i < len(tables); i++ {
+		tss = append(tss, &(TableSpec{ Name: tables[i]}))
+	}
+
+	return tss
+}
+
 // StartTx method is used by infra to start a check-and-set Transaction.
-func (d *DB) StartTx(w []WatchKeys) error {
+func (d *DB) StartTx(w []WatchKeys, tss []*TableSpec) error {
+
 	if glog.V(3) {
-		glog.Info("StartTx: Begin: w: ", w)
+		glog.Info("StartTx: Begin: w: ", w, " tss: ", tss)
 	}
 
 	var e error = nil
 	var args []interface{}
+	var ret cvl.CVLRetCode
+
+	//Start CVL session
+	if d.cv, ret = cvl.ValidationSessOpen(); ret != cvl.CVL_SUCCESS {
+		e = errors.New("StartTx: Unable to create CVL session")
+		goto StartTxExit
+	}
 
 	// Validate State
 	if d.txState != txStateNone {
@@ -1000,12 +1069,7 @@ func (d *DB) StartTx(w []WatchKeys) error {
 	//   Else append keys to the Cmd args
 	//   Note: (LUA scripts do not support WATCH)
 
-	if len(w) == 0 {
-		glog.Warning("StartTx: Empty WatchKeys. Skipping WATCH")
-		goto StartTxSkipWatch
-	}
-
-	args = make([]interface{}, 0, len(w)+1) // Init. est. with no wildcard
+	args = make([]interface{}, 0, len(w) + len(tss) + 1)
 	args = append(args, "WATCH")
 	for i := 0; i < len(w); i++ {
 
@@ -1024,6 +1088,17 @@ func (d *DB) StartTx(w []WatchKeys) error {
 		for j := 0; j < len(redisKeys); j++ {
 			args = append(args, d.redis2key(w[i].Ts, redisKeys[j]))
 		}
+	}
+
+	// for each TS, append to args the CONFIG_DB_UPDATED_<TABLENAME> key
+
+	for i := 0; i < len(tss); i++ {
+		args = append( args, d.ts2redisUpdated(tss[i]))
+	}
+
+	if len(args) == 1 {
+		glog.Warning("StartTx: Empty WatchKeys. Skipping WATCH")
+		goto StartTxSkipWatch
 	}
 
 	// Issue the WATCH
@@ -1053,6 +1128,8 @@ func (d *DB) CommitTx() error {
 	}
 
 	var e error = nil
+	var tsmap map[TableSpec]bool =
+		make(map[TableSpec]bool, len(d.txCmds)) // UpperBound
 
 	// Validate State
 	switch d.txState {
@@ -1092,6 +1169,9 @@ func (d *DB) CommitTx() error {
 
 		redisKey := d.key2redis(d.txCmds[i].ts, *(d.txCmds[i].key))
 
+		// Add TS to the map of watchTables
+		tsmap[*(d.txCmds[i].ts)] = true;
+
 		switch d.txCmds[i].op {
 
 		case txOpHMSet:
@@ -1129,10 +1209,6 @@ func (d *DB) CommitTx() error {
 			args = make([]interface{}, 0, 2)
 			args = append(args, "DEL", redisKey)
 
-			for k, _ := range d.txCmds[i].value.Field {
-				args = append(args, k)
-			}
-
 			if glog.V(4) {
 				glog.Info("CommitTx: Do: ", args)
 			}
@@ -1149,6 +1225,16 @@ func (d *DB) CommitTx() error {
 		}
 	}
 
+	// Flag the Tables as updated.
+	for ts, _ := range tsmap {
+		_, e = d.client.Do("SET", d.ts2redisUpdated(&ts), "1").Result()
+		if e != nil {
+			glog.Warning("CommitTx: Do: SET ",
+				d.ts2redisUpdated(&ts), " 1: e: ",
+				e.Error())
+		}
+	}
+
 	// Issue EXEC
 	_, e = d.client.Do("EXEC").Result()
 
@@ -1160,6 +1246,12 @@ func (d *DB) CommitTx() error {
 	d.txState = txStateNone
 	d.txCmds = d.txCmds[:0]
 	d.cvlEditConfigData = d.cvlEditConfigData[:0]
+
+	//Close CVL session
+	if ret := cvl.ValidationSessClose(d.cv); ret != cvl.CVL_SUCCESS {
+		glog.Error("CommitTx: End: Error in closing CVL session")
+	}
+	d.cv = nil
 
 CommitTxExit:
 	if glog.V(3) {
@@ -1210,6 +1302,12 @@ func (d *DB) AbortTx() error {
 	d.txState = txStateNone
 	d.txCmds = d.txCmds[:0]
 	d.cvlEditConfigData = d.cvlEditConfigData[:0]
+
+	//Close CVL session
+	if ret := cvl.ValidationSessClose(d.cv); ret != cvl.CVL_SUCCESS {
+		glog.Error("AbortTx: End: Error in closing CVL session")
+	}
+	d.cv = nil
 
 AbortTxExit:
 	if glog.V(3) {

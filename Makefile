@@ -5,14 +5,22 @@
 #
 #######################################################################
 
-.PHONY: all clean cleanall codegen rest-server yamlGen cli
+.PHONY: all clean cleanall codegen rest-server rest-clean yamlGen cli
 
-ifeq ($(GOPATH),)
-export GOPATH=/tmp/go
+TOPDIR := $(abspath .)
+BUILD_DIR := $(TOPDIR)/build
+export TOPDIR
+
+ifeq ($(BUILD_GOPATH),)
+export BUILD_GOPATH=$(TOPDIR)/gopkgs
 endif
 
+export GOPATH=$(BUILD_GOPATH):$(TOPDIR)
+
+ifeq ($(GO),)
 GO := /usr/local/go/bin/go 
 export GO
+endif
 
 INSTALL := /usr/bin/install
 
@@ -25,40 +33,26 @@ GO_DEPS_LIST = github.com/gorilla/mux \
                github.com/go-redis/redis \
                github.com/golang/glog \
                github.com/pkg/profile \
-               gopkg.in/go-playground/validator.v9
+               gopkg.in/go-playground/validator.v9 \
+               github.com/msteinert/pam \
+               golang.org/x/crypto/ssh \
+	       github.com/antchfx/jsonquery \
+	       github.com/antchfx/xmlquery
 
 
-PIP2_DEPS_LIST = connexion python_dateutil certifi
+REST_BIN = $(BUILD_DIR)/rest_server/dist/main
+CERTGEN_BIN = $(BUILD_DIR)/rest_server/dist/generate_cert
 
-TOPDIR := $(abspath .)
-BUILD_DIR := $(TOPDIR)/build
 
-export TOPDIR
-
-# Source files affecting REST server
-REST_SRCS := $(shell find $(TOPDIR)/src -name '*.go' | sort) \
-			 $(shell find $(TOPDIR)/models/yang -name '*.yang' | sort) \
-			 $(shell find $(TOPDIR)/models/openapi -name '*.yaml' | sort)
-
-CVL_GOPATH=$(TOPDIR):$(TOPDIR)/src/cvl/build
-REST_BIN := $(REST_DIST_DIR)/main
-REST_GOPATH = $(GOPATH):$(CVL_GOPATH):$(TOPDIR):$(REST_DIST_DIR)
-
-#$(info REST_SRCS = $(REST_SRCS) )
-
-all: build-deps pip2-deps cli go-deps go-patch rest-server
+all: build-deps go-deps go-patch translib rest-server cli
 
 build-deps:
 	mkdir -p $(BUILD_DIR)
 
 go-deps: $(GO_DEPS_LIST)
-pip2-deps: $(PIP2_DEPS_LIST)
 
 $(GO_DEPS_LIST):
 	$(GO) get -v $@
-
-$(PIP2_DEPS_LIST):
-	sudo pip install $@
 
 cli:
 	$(MAKE) -C src/CLI
@@ -66,24 +60,36 @@ cli:
 cvl:
 	$(MAKE) -C src/cvl
 	$(MAKE) -C src/cvl/schema
+cvl-test:
+	$(MAKE) -C src/cvl gotest
 
-REST_PREREQ := cvl
-GOPATH := $(GOPATH):$(CVL_GOPATH)
-include src/rest/Makefile
+rest-server:
+	$(MAKE) -C src/rest
 
-rest-server: $(REST_BIN)
+rest-clean:
+	$(MAKE) -C src/rest clean
 
-yamlGen:
-	$(MAKE) -C models/yang
-
+translib: cvl
+	$(MAKE) -C src/translib
 
 codegen:
 	$(MAKE) -C models
 
-go-patch:
-	cp $(TOPDIR)/ygot-modified-files/* /tmp/go/src/github.com/openconfig/ygot/ytypes/
-	$(GO) install -v -gcflags "-N -l" /tmp/go/src/github.com/openconfig/ygot/ygot
+yamlGen:
+	$(MAKE) -C models/yang
 
+go-patch: go-deps
+	cd $(BUILD_GOPATH)/src/github.com/openconfig/ygot/; git checkout 724a6b18a9224343ef04fe49199dfb6020ce132a 2>/dev/null ; true; \
+cp $(TOPDIR)/ygot-modified-files/debug.go $(BUILD_GOPATH)/src/github.com/openconfig/ygot/ytypes/../util/debug.go; \
+cp $(TOPDIR)/ygot-modified-files/container.go $(BUILD_GOPATH)/src/github.com/openconfig/ygot/ytypes/container.go; \
+cp $(TOPDIR)/ygot-modified-files/list.go $(BUILD_GOPATH)/src/github.com/openconfig/ygot/ytypes/list.go; \
+cp $(TOPDIR)/ygot-modified-files/leaf.go $(BUILD_GOPATH)/src/github.com/openconfig/ygot/ytypes/leaf.go; \
+cp $(TOPDIR)/ygot-modified-files/util_schema.go $(BUILD_GOPATH)/src/github.com/openconfig/ygot/ytypes/util_schema.go; \
+cp $(TOPDIR)/ygot-modified-files/schema.go $(BUILD_GOPATH)/src/github.com/openconfig/ygot/ytypes/../util/schema.go; \
+cp $(TOPDIR)/ygot-modified-files/unmarshal.go $(BUILD_GOPATH)/src/github.com/openconfig/ygot/ytypes/unmarshal.go; \
+cp $(TOPDIR)/ygot-modified-files/validate.go $(BUILD_GOPATH)/src/github.com/openconfig/ygot/ytypes/validate.go; \
+cp $(TOPDIR)/ygot-modified-files/reflect.go $(BUILD_GOPATH)/src/github.com/openconfig/ygot/ytypes/../util/reflect.go; \
+$(GO) install -v -gcflags "-N -l" $(BUILD_GOPATH)/src/github.com/openconfig/ygot/ygot
 
 install:
 	$(INSTALL) -D $(REST_BIN) $(DESTDIR)/usr/sbin/rest_server
@@ -99,8 +105,9 @@ install:
 $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	mv $* $(DEST)/
 
-clean:
+clean: rest-clean
 	$(MAKE) -C src/cvl clean
+	$(MAKE) -C src/translib clean
 	$(MAKE) -C src/cvl/schema clean
 	$(MAKE) -C src/cvl cleanall
 	rm -rf build/*

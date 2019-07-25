@@ -46,6 +46,10 @@ def generate_body(func, args):
        sp = args[1].split('/')
        keypath = [ args[0], 0, sp[0] ]
        body = { "openconfig-if-ip:config":  {"ip" : sp[0], "prefix-length" : int(sp[1])} }
+    elif func.__name__ == 'delete_openconfig_if_ip_interfaces_interface_subinterfaces_subinterface_ipv4_addresses_address_config':
+       keypath = [args[0], 0, args[1]]
+    elif func.__name__ == 'delete_openconfig_if_ip_interfaces_interface_subinterfaces_subinterface_ipv6_addresses_address_config':
+       keypath = [args[0], 0, args[1]]
     elif func.__name__ == 'get_openconfig_interfaces_interfaces_interface':
 	keypath = [args[0]]
     elif func.__name__ == 'get_openconfig_interfaces_interfaces':
@@ -54,6 +58,16 @@ def generate_body(func, args):
        body = {} 
 
     return keypath,body
+
+def getId(item):
+    prfx = "Ethernet"
+    state_dict = item['state']
+    ifName = state_dict['name']
+
+    if ifName.startswith(prfx):
+        ifId = int(ifName[len(prfx):])
+        return ifId
+    return ifName
 
 def run(func, args):
 
@@ -75,6 +89,12 @@ def run(func, args):
         else:
             # Get Command Output
             api_response = aa.api_client.sanitize_for_serialization(api_response)
+            if 'openconfig-interfaces:interfaces' in api_response:
+                value = api_response['openconfig-interfaces:interfaces']
+                if 'interface' in value:
+                    tup = value['interface']
+                    value['interface'] = sorted(tup, key=getId)
+
             if api_response is None:
                 print("Failed")
             else:

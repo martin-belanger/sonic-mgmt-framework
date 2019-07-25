@@ -80,11 +80,13 @@ type AclApp struct {
 }
 
 func init() {
-	log.Info("Init called for ACL module")
+
 	err := register("/openconfig-acl:acl",
-		&appInfo{appType: reflect.TypeOf(AclApp{}),
-			ygotRootType: reflect.TypeOf(ocbinds.OpenconfigAcl_Acl{}),
-			isNative:     false})
+        &appInfo{appType:  reflect.TypeOf(AclApp{}),
+            ygotRootType:  reflect.TypeOf(ocbinds.OpenconfigAcl_Acl{}),
+            isNative:      false,
+			tablesToWatch: []*db.TableSpec{&db.TableSpec{Name: ACL_TABLE}, &db.TableSpec{Name: RULE_TABLE}}})
+
 	if err != nil {
 		log.Fatal("Register ACL app module with App Interface failed with error=", err)
 	}
@@ -122,17 +124,7 @@ func (app *AclApp) translateCreate(d *db.DB) ([]db.WatchKeys, error) {
 	var keys []db.WatchKeys
 	log.Info("translateCreate:acl:path =", app.path)
 
-	aclObj := app.getAppRootObject()
-	app.aclTableMap = app.convertOCAclsToInternal(aclObj)
-	app.ruleTableMap = app.convertOCAclRulesToInternal(aclObj)
-	app.bindAclFlag, err = app.convertOCAclBindingsToInternal(d, app.aclTableMap, aclObj)
-
-	if err != nil {
-		log.Error(err)
-		return keys, err
-	}
-
-	keys, err = app.generateDbWatchKeys(d, false)
+	keys, err = app.translateCRUCommon(d, CREATE)
 
 	return keys, err
 }
@@ -142,7 +134,7 @@ func (app *AclApp) translateUpdate(d *db.DB) ([]db.WatchKeys, error) {
 	var keys []db.WatchKeys
 	log.Info("translateUpdate:acl:path =", app.path)
 
-	keys, err = app.translateCreate(d)
+	keys, err = app.translateCRUCommon(d, UPDATE)
 
 	return keys, err
 }
@@ -151,7 +143,9 @@ func (app *AclApp) translateReplace(d *db.DB) ([]db.WatchKeys, error) {
 	var err error
 	var keys []db.WatchKeys
 	log.Info("translateReplace:acl:path =", app.path)
-	//keys, err = app.translateCreate(d)
+
+	//keys, err = app.translateCRUCommon(d, REPLACE)
+
 	err = errors.New("Not implemented")
 	return keys, err
 }
@@ -170,6 +164,61 @@ func (app *AclApp) translateGet(dbs [db.MaxDB]*db.DB) error {
 	var err error
 	log.Info("translateGet:acl:path =", app.path)
 	return err
+}
+
+func (app *AclApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationOpts, *notificationInfo, error) {
+    err := errors.New("Not supported")
+    configDb := dbs[db.ConfigDB]
+    pathInfo := NewPathInfo(path)
+    notifInfo := notificationInfo{dbno: db.ConfigDB}
+
+    if isSubtreeRequest(pathInfo.Template, "/openconfig-acl:acl/acl-sets") {
+        if isSubtreeRequest(pathInfo.Template, "/openconfig-acl:acl/acl-sets/acl-set{name}{type}") {
+            aclN := strings.Replace(strings.Replace(pathInfo.Var("name"), " ", "_", -1), "-", "_", -1)
+            aclT := pathInfo.Var("type")
+            if OPENCONFIG_ACL_TYPE_IPV4 != aclT && OPENCONFIG_ACL_TYPE_IPV6 != aclT && OPENCONFIG_ACL_TYPE_L2 != aclT {
+                err = errors.New("Invalid ACL Type")
+                return nil, nil, err
+            }
+            aclkey := aclN + "_" + aclT
+            if isSubtreeRequest(pathInfo.Template, "/openconfig-acl:acl/acl-sets/acl-set{name}{type}/acl-entries/acl-entry{sequence-id}") {
+                rulekey := "RULE_" + pathInfo.Var("sequence-id")
+                notifInfo.table = db.TableSpec{Name: RULE_TABLE}
+                notifInfo.key = db.Key{Comp: []string{aclkey, rulekey}}
+            } else {
+                // All Rules of a given Acl
+                if pathInfo.Template == "/openconfig-acl:acl/acl-sets/acl-set{name}{type}/acl-entries" {
+                    notifInfo.table = db.TableSpec{Name: RULE_TABLE}
+                } else {
+                    notifInfo.table = db.TableSpec{Name: ACL_TABLE}
+                    notifInfo.key = db.Key{Comp: []string{aclkey}}
+                }
+            }
+        } else {
+            // All Acls and their rules
+            notifInfo.table = db.TableSpec{Name: ACL_TABLE}
+        }
+    } else if isSubtreeRequest(pathInfo.Template, "/openconfig-acl:acl/interfaces") {
+        if isSubtreeRequest(pathInfo.Template, "/openconfig-acl:acl/interfaces/interface{id}") {
+            // With one interface, multiple ACLs can be binded. Need mehanism to pass multiple Keys
+            var notifKeys []db.Key
+            intfId := pathInfo.Var("id")
+            aclKeys, _ := configDb.GetKeys(app.aclTs)
+            for i, _ := range aclKeys {
+                aclEntry, _ := configDb.GetEntry(app.aclTs, aclKeys[i])
+                aclIntfs := aclEntry.GetList("ports")
+                if contains(aclIntfs, intfId) {
+                    notifKeys = append(notifKeys, aclKeys[i])
+                }
+            }
+        }
+        notifInfo.table = db.TableSpec{Name: ACL_TABLE}
+    } else {
+        // Topmost path
+        notifInfo.table = db.TableSpec{Name: ACL_TABLE}
+    }
+
+    return nil, &notifInfo, err
 }
 
 func (app *AclApp) processCreate(d *db.DB) (SetResponse, error) {
@@ -299,13 +348,13 @@ func (app *AclApp) processDelete(d *db.DB) (SetResponse, error) {
 			}
 		} else {
 			// Deletion of All ACLs and Rules
-			err = d.DeleteTable(app.aclTs)
+            err = d.DeleteTable(app.ruleTs)
 			if err != nil {
 				log.Error(err)
 				resp = SetResponse{ErrSrc: AppErr}
 				return resp, err
 			}
-			err = d.DeleteTable(app.ruleTs)
+            err = d.DeleteTable(app.aclTs)
 			if err != nil {
 				log.Error(err)
 				resp = SetResponse{ErrSrc: AppErr}
@@ -528,6 +577,26 @@ func (app *AclApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 	return GetResponse{Payload: payload}, err
 }
 
+func (app *AclApp) translateCRUCommon(d *db.DB, opcode int) ([]db.WatchKeys, error) {
+	var err error
+	var keys []db.WatchKeys
+	log.Info("translateCRUCommon:acl:path =", app.path)
+
+	aclObj := app.getAppRootObject()
+	app.aclTableMap = app.convertOCAclsToInternal(aclObj)
+	app.ruleTableMap = app.convertOCAclRulesToInternal(aclObj)
+	app.bindAclFlag, err = app.convertOCAclBindingsToInternal(d, app.aclTableMap, aclObj)
+
+	if err != nil {
+		log.Error(err)
+		return keys, err
+	}
+
+	keys, err = app.generateDbWatchKeys(d, false)
+
+	return keys, err
+}
+
 /***********    These are Translation Helper Function   ***********/
 func (app *AclApp) convertDBAclRulesToInternal(dbCl *db.DB, aclName string, seqId int64, ruleKey db.Key) error {
 	var err error
@@ -684,6 +753,10 @@ func (app *AclApp) convertInternalToOCAclRuleProperties(ruleData db.Value, aclTy
 			port := ruleData.Get(ruleKey)
 			entrySet.Transport.Config.DestinationPort = getTransportConfigDestPort(port)
 			//entrySet.Transport.State.DestinationPort = &addr
+        } else if "TCP_FLAGS" == ruleKey {
+            tcpFlags := ruleData.Get(ruleKey)
+            entrySet.Transport.Config.TcpFlags = getTransportConfigTcpFlags(tcpFlags)
+            entrySet.Transport.State.TcpFlags = getTransportConfigTcpFlags(tcpFlags)
 		} else if "PACKET_ACTION" == ruleKey {
 			if "FORWARD" == ruleData.Get(ruleKey) {
 				entrySet.Actions.Config.ForwardingAction = ocbinds.OpenconfigAcl_FORWARDING_ACTION_ACCEPT
@@ -1283,27 +1356,35 @@ func convertOCToInternalInputAction(ruleData db.Value, aclName string, ruleIndex
 func (app *AclApp) setAclDataInConfigDb(d *db.DB, aclData map[string]db.Value, createFlag bool) error {
 	var err error
 	for key := range aclData {
-
 		existingEntry, err := d.GetEntry(app.aclTs, db.Key{Comp: []string{key}})
 		// If Create ACL request comes and ACL already exists, throw error
 		if createFlag && existingEntry.IsPopulated() {
 			return errors.New("Acl " + key + " already exists")
 		}
 		if createFlag || (!createFlag && err != nil && !existingEntry.IsPopulated()) {
-			//err := d.SetEntry(app.aclTs, db.Key{Comp: []string{key}}, aclData[key])
 			err := d.CreateEntry(app.aclTs, db.Key{Comp: []string{key}}, aclData[key])
 			if err != nil {
 				log.Error(err)
 				return err
 			}
+		} else {
+			if existingEntry.IsPopulated() {
+                if existingEntry.Get(ACL_DESCRIPTION) != aclData[key].Field[ACL_DESCRIPTION] {
+                    err := d.ModEntry(app.aclTs, db.Key{Comp: []string{key}}, aclData[key])
+                    if err != nil {
+                        log.Error(err)
+                        return err
+                    }
+                }
+				/*
+					//Merge any ACL binds already present. Validate should take care of any checks so its safe to blindly merge here
+					if len(existingEntry.Field) > 0  {
+						value.Field["ports"] += "," + existingEntry.Field["ports@"]
+					}
+					fmt.Println(value)
+				*/
+			}
 		}
-		/*
-		   //Merge any ACL binds already present. Validate should take care of any checks so its safe to blindly merge here
-		   if len(existingEntry.Field) > 0  {
-		       value.Field["ports"] += "," + existingEntry.Field["ports@"]
-		   }
-		   fmt.Println(value)
-		*/
 	}
 	return err
 }
@@ -1318,11 +1399,18 @@ func (app *AclApp) setAclRuleDataInConfigDb(d *db.DB, ruleData map[string]map[st
 				return errors.New("Rule " + ruleName + " already exists")
 			}
 			if createFlag || (!createFlag && err != nil && !existingRuleEntry.IsPopulated()) {
-				//err := d.SetEntry(app.ruleTs, db.Key{Comp: []string{aclName, ruleName}}, ruleData[aclName][ruleName])
 				err := d.CreateEntry(app.ruleTs, db.Key{Comp: []string{aclName, ruleName}}, ruleData[aclName][ruleName])
 				if err != nil {
 					log.Error(err)
 					return err
+				}
+			} else {
+				if existingRuleEntry.IsPopulated() && ruleName != "DEFAULT_RULE" {
+					err := d.ModEntry(app.ruleTs, db.Key{Comp: []string{aclName, ruleName}}, ruleData[aclName][ruleName])
+					if err != nil {
+						log.Error(err)
+						return err
+					}
 				}
 			}
 		}
@@ -1453,14 +1541,49 @@ func getTransportConfigSrcPort(srcPort string) ocbinds.OpenconfigAcl_Acl_AclSets
 	return srcPortCfg
 }
 
+func getTransportConfigTcpFlags(tcpFlags string) []ocbinds.E_OpenconfigPacketMatchTypes_TCP_FLAGS {
+    var flags []ocbinds.E_OpenconfigPacketMatchTypes_TCP_FLAGS
+    if len(tcpFlags) > 0 {
+        flagStr := strings.Split(tcpFlags, "/")[0]
+        flagNumber,_ := strconv.ParseUint(strings.Replace(flagStr, "0x", "", -1), 16, 32)
+        for i := 0; i < 8; i++ {
+            mask := 1 << uint(i)
+            if (int(flagNumber) & mask) > 0 {
+                switch int(flagNumber) & mask {
+                case 0x01:
+                    flags = append(flags, ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_FIN)
+                case 0x02:
+                    flags = append(flags, ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_SYN)
+                case 0x04:
+                    flags = append(flags, ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_RST)
+                case 0x08:
+                    flags = append(flags, ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_PSH)
+                case 0x10:
+                    flags = append(flags, ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_ACK)
+                case 0x20:
+                    flags = append(flags, ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_URG)
+                case 0x40:
+                    flags = append(flags, ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_ECE)
+                case 0x80:
+                    flags = append(flags, ocbinds.OpenconfigPacketMatchTypes_TCP_FLAGS_TCP_CWR)
+                default:
+                }
+            }
+        }
+    }
+    return flags
+}
+
 func (app *AclApp) generateDbWatchKeys(d *db.DB, isDeleteOp bool) ([]db.WatchKeys, error) {
 	var err error
 	var keys []db.WatchKeys
 	var aclSubtree = false
 
 	aclObj := app.getAppRootObject()
-	if reflect.TypeOf(*app.ygotTarget).Elem().Name() == "OpenconfigAcl_Acl" {
-		aclSubtree = true
+	if !util.IsValueScalar(reflect.ValueOf(*app.ygotTarget)) && util.IsValuePtr(reflect.ValueOf(*app.ygotTarget)) {
+		if reflect.TypeOf(*app.ygotTarget).Elem().Name() == "OpenconfigAcl_Acl" {
+			aclSubtree = true
+		}
 	}
 
 	// These slices will store the yangPaths derived from the URI requested to help

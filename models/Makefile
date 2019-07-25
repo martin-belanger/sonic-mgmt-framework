@@ -19,6 +19,7 @@ SERVER_DIST_DIR		:= $(SERVER_CODEGEN_DIR)/dist
 SERVER_DIST_INIT	:= $(SERVER_DIST_DIR)/.init_done
 SERVER_DIST_GO		:= $(SERVER_DIST_DIR)/src/swagger
 SERVER_DIST_UI		:= $(SERVER_DIST_DIR)/ui
+SERVER_DIST_UI_HOME	:= $(SERVER_DIST_DIR)/ui/index.html
 
 YANGAPI_DIR     := $(TOPDIR)/build/yaml
 YANGAPI_SPECS   := $(shell find $(YANGAPI_DIR) -name '*.yaml' | sort)
@@ -32,14 +33,21 @@ OPENAPI_SERVERS := $(addsuffix /.openapi_done, $(addprefix $(SERVER_CODEGEN_DIR)
 
 PY_CLIENT_CODEGEN_DIR  := $(BUILD_DIR)/swagger_client_py
 PY_CLIENT_TARGETS := $(addsuffix .yangapi_client, $(addprefix $(PY_CLIENT_CODEGEN_DIR)/, $(YANGAPI_NAMES))) \
-                                        $(addsuffix .openapi_client, $(addprefix $(PY_CLIENT_CODEGEN_DIR)/, $(OPENAPI_NAMES)))
+                     $(addsuffix .openapi_client, $(addprefix $(PY_CLIENT_CODEGEN_DIR)/, $(OPENAPI_NAMES)))
+
+UIGEN_DIR  = $(TOPDIR)/tools/ui_gen
+UIGEN_SRCS = $(shell find $(UIGEN_DIR) -type f)
 
 
 .PHONY: all clean cleanall go-server py-client
 
 all: go-server py-client
 
-go-server: $(YANGAPI_SERVERS) $(OPENAPI_SERVERS) $(SERVER_DIST_INIT)
+go-server: $(YANGAPI_SERVERS) $(OPENAPI_SERVERS) $(SERVER_DIST_INIT) $(SERVER_DIST_UI_HOME)
+
+$(SERVER_DIST_UI_HOME): $(YANGAPI_SERVERS) $(OPENAPI_SERVERS) $(UIGEN_SRCS)
+	@echo "+++ Generating  landing page for Swagger UI +++"
+	$(UIGEN_DIR)/src/uigen.py
 
 py-client: $(PY_CLIENT_TARGETS)
 
@@ -135,6 +143,7 @@ clean-client:
 	rm -rf $(PY_CLIENT_CODEGEN_DIR)
 
 clean: clean-server clean-client
+	make -C yang clean
 
 cleanall: clean
 	rm -f $(CODEGEN_JAR)

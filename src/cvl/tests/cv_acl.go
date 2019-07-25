@@ -13,9 +13,9 @@ func main() {
 
 	cvl.Initialize()
 
-	cv, ret := cvl.ValidatorSessOpen()
+	cv, ret := cvl.ValidationSessOpen()
 	if (ret != cvl.CVL_SUCCESS) {
-		fmt.Printf("NewDB: Could not create CVL session")
+		fmt.Printf("Could not create CVL session")
 		return
 	}
 
@@ -249,7 +249,7 @@ func main() {
 		}
 	}
 
-	cvl.ValidatorSessClose(cv)
+	cvl.ValidationSessClose(cv)
 	cvl.Finish()
 
 	fmt.Printf("\n\n\n Time taken for %v requests = %v\n", count, time.Since(start))

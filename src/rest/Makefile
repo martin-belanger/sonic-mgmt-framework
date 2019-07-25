@@ -18,7 +18,8 @@ GO := go
 endif
 
 ifeq ($(GOPATH),)
-GOPATH := $(shell $(GO) env GOPATH)
+ABS_TOPDIR := $(abspath $(TOPDIR))
+GOPATH := $(ABS_TOPDIR)/gopkgs:$(ABS_TOPDIR):$(shell $(GO) env GOPATH)
 endif
 
 ifeq ($(GOROOT),)
@@ -33,22 +34,21 @@ REST_SRCS := $(shell find $(TOPDIR)/src -name '*.go' | sort) \
 			 $(shell find $(TOPDIR)/models/yang -name '*.yang' | sort) \
 			 $(shell find $(TOPDIR)/models/openapi -name '*.yaml' | sort)
 
-REST_GOPATH := $(GOPATH):$(abspath $(TOPDIR)):$(abspath $(REST_DIST_DIR))
+REST_GOPATH := $(GOPATH):$(abspath $(REST_DIST_DIR))
 
 # Certificate generator tool for generating temp certificates.
 # Compiled from standard crypto/tls/generate_cert.go
 CERTGEN_BIN := $(REST_DIST_DIR)/generate_cert
 
 
-# Keep this as first target
+# Default target
+all: $(REST_BIN) $(CERTGEN_BIN)
+
 # Invokes yang and model make to generate swagger artifcats.
-# Top level makefile, which includes this makefile, can pass
-# additional pre-requisites (like cvl) by setting REST_PREREQ
-$(REST_BIN): $(REST_SRCS) $(REST_PREREQ) $(CERTGEN_BIN)
+$(REST_BIN): $(REST_SRCS)
 	$(MAKE) -C $(TOPDIR)/models/yang
 	$(MAKE) -C $(TOPDIR)/models
-	cd $(TOPDIR)/src/translib/ocbinds && GOPATH=$(REST_GOPATH) $(GO) generate
-	GOPATH=$(REST_GOPATH) $(GO) build -gcflags=all="-N -l" -o $@ $(TOPDIR)/src/rest/main/main.go
+	GOPATH=$(REST_GOPATH) $(GO) build -gcflags=all="-N -l" -v -o $@ $(TOPDIR)/src/rest/main/main.go
 
 
 # Compile a certificate generator temporary certificates from
@@ -59,8 +59,7 @@ $(CERTGEN_BIN):
 	$(GO) build -o $@ $(GOROOT)/src/crypto/tls/generate_cert.go
 
 
-rest-clean:
-	rm -f $(TOPDIR)/src/translib/ocbinds/ocbinds.go
+clean:
 	$(MAKE) -C $(TOPDIR)/models clean
 	$(MAKE) -C $(TOPDIR)/models/yang clean
 	rm -f $(REST_BIN) $(CERTGEN_BIN)
