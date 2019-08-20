@@ -6,14 +6,15 @@ import (
 	"regexp"
 	"time"
 	 log "github.com/golang/glog"
-	//"encoding/xml"
 	"encoding/json"
 	"github.com/go-redis/redis"
 	"github.com/antchfx/xmlquery"
 	"github.com/antchfx/jsonquery"
 	"cvl/internal/yparser"
-	"cvl/internal/util"
+	. "cvl/internal/util"
 	"sync"
+	"flag"
+	"runtime"
 )
 
 //DB number 
@@ -30,7 +31,8 @@ const (
 	INVALID_DB
 )
 
-const DEFAULT_CACHE_DURATION uint16 = 60 /* 60 sec */
+const DEFAULT_CACHE_DURATION uint16 = 300 /* 300 sec */
+const MAX_BULK_ENTRIES_IN_PIPELINE int = 50
 
 var reLeafRef *regexp.Regexp = nil
 var reHashRef *regexp.Regexp = nil
@@ -54,7 +56,7 @@ type modelTableInfo struct {
 	leafRef map[string][]string //for storing all leafrefs for a leaf in a table, 
 				//multiple leafref possible for union 
 	mustExp map[string]string
-	tablesForMustExp map[string]bool
+	tablesForMustExp map[string]CVLOperation
 }
 
 
@@ -65,7 +67,7 @@ type CVLErrorInfo struct {
 	CVLErrDetails string  /* CVL Error Message details. */ 
 	Keys    []string      /* Keys of the Table having error. */
         Value    string        /* Field Value throwing error */
-        Field	 string        /* Field Name throwing error . */
+	Field	 string        /* Field Name throwing error . */
 	Msg     string        /* Detailed error message. */
 	ConstraintErrMsg  string  /* Constraint error message. */
 	ErrAppTag string
@@ -76,6 +78,7 @@ type CVL struct {
 	yp *yparser.YParser
 	tmpDbCache map[string]interface{} //map of table storing map of key-value pair
 	batchLeaf string
+	chkLeafRefWithOthCache bool
 }
 
 type modelNamespace struct {
@@ -116,28 +119,34 @@ type keyValuePairStruct struct {
 	values []string
 }
 
-func TRACE_LOG(level log.Level, fmtStr string, args ...interface{}) {
-	//util.TRACE_LOG(level, ((util.TRACE_CACHE) | (util.TRACE_CREATE) | (util.TRACE_UPDATE)), fmtStr, args...)
-	util.TRACE_LOG(level, util.TRACE_CACHE, fmtStr, args...)
+func TRACE_LOG(level log.Level, tracelevel CVLTraceLevel, fmtStr string, args ...interface{}) {
+	TRACE_LEVEL_LOG(level, tracelevel, fmtStr, args...)
 }
 
-func CVL_LOG(level util.CVLLogLevel, fmtStr string, args ...interface{}) {
-	util.CVL_LOG(level, fmtStr, args...)
+func CVL_LOG(level CVLLogLevel, fmtStr string, args ...interface{}) {
+	CVL_LEVEL_LOG(level, fmtStr, args...)
 }
 
 //package init function 
 func init() {
 	if (os.Getenv("CVL_SCHEMA_PATH") != "") {
-		util.CVL_SCHEMA = os.Getenv("CVL_SCHEMA_PATH") + "/"
+		CVL_SCHEMA = os.Getenv("CVL_SCHEMA_PATH") + "/"
 	}
 
 	if (os.Getenv("CVL_DEBUG") != "") {
-		util.SetTrace(true)
+		SetTrace(true)
 	}
 
-	util.ConfigFileSyncHandler()
-	cvlCfgMap := util.ReadConfFile()
-	CVL_LOG(util.INFO ,"Current Values of CVL Configuration File %v", cvlCfgMap)
+	ConfigFileSyncHandler()
+	cvlCfgMap := ReadConfFile()
+
+	if (strings.Compare(cvlCfgMap["LOGTOSTDERR"], "true") == 0) {
+		flag.Set("logtostderr", "true")
+		flag.Set("stderrthreshold", cvlCfgMap["STDERRTHRESHOLD"])
+		flag.Set("v", cvlCfgMap["VERBOSITY"])
+	}
+
+	CVL_LOG(INFO ,"Current Values of CVL Configuration File %v", cvlCfgMap)
 
 	//regular expression for leafref and hashref finding
 	reLeafRef = regexp.MustCompile(`.*[/]([a-zA-Z]*:)?(.*)[/]([a-zA-Z]*:)?(.*)`)
@@ -153,6 +162,11 @@ func init() {
 	cvg.stopChan = make(chan int, 1)
 	//Initialize mutex
 	cvg.mutex = &sync.Mutex{}
+
+	_, err := redisClient.ConfigSet("notify-keyspace-events", "AKE").Result()
+	if err != nil {
+		CVL_LOG(ERROR ,"Could not enable notification error %s", err)
+	}
 
 	dbCacheSet(false, "PORT", 0)
 }
@@ -174,7 +188,7 @@ func getXmlNodeAttr(node *xmlquery.Node, attrName string) string {
 
 //Store useful schema data during initialization
 func storeModelInfo(modelFile string, module *yparser.YParserModule) { //such model info can be maintained in C code and fetched from there 
-	f, err := os.Open(util.CVL_SCHEMA + modelFile)
+	f, err := os.Open(CVL_SCHEMA + modelFile)
 	root, err := xmlquery.Parse(f)
 
 	if  err != nil {
@@ -231,6 +245,15 @@ func storeModelInfo(modelFile string, module *yparser.YParserModule) { //such mo
 			case "key":
 				tableInfo.keys = strings.Split(node.Attr[0].Value," ")
 				fieldCount++
+				keypattern := []string{tableName}
+
+				/* Create the default key pattern of the form Table Name|{key1}|{key2}. */
+				for _ , key := range tableInfo.keys {
+					keypattern = append(keypattern, fmt.Sprintf("{%s}",key))
+				}
+
+				tableInfo.redisKeyPattern = strings.Join(keypattern, tableInfo.redisKeyDelim)
+
 			case "key-delim":
 				tableInfo.redisKeyDelim = node.Attr[0].Value
 				fieldCount++
@@ -245,12 +268,14 @@ func storeModelInfo(modelFile string, module *yparser.YParserModule) { //such mo
 		}
 
 		//Find and store all leafref under each table
+		/*
 		if (listNode == nil) {
 			//Store the tableInfo in global data
 			modelInfo.tableInfo[tableName] = tableInfo
 
 			continue
 		}
+		*/
 
 		leafRefNodes := xmlquery.Find(listNode, "//type[@name='leafref']")
 		if (leafRefNodes == nil) {
@@ -325,9 +350,24 @@ func addTableNamesForMustExp() {
 		}
 
 		for _, mustExp := range tblInfo.mustExp {
-			tblInfo.tablesForMustExp = make(map[string]bool)
-			//store the current table always so that expression check with other row
-			tblInfo.tablesForMustExp[tblName] = true
+			tblInfo.tablesForMustExp = make(map[string]CVLOperation)
+			var op CVLOperation = OP_NONE
+			//Check if 'must' expression should be executed for a particular operation
+			if (strings.Contains(mustExp,
+			"/scommon:operation/scommon:operation != 'CREATE'") == true) {
+				op = op | OP_CREATE
+			} else if (strings.Contains(mustExp,
+			"/scommon:operation/scommon:operation != 'UPDATE'") == true) {
+				op = op | OP_UPDATE
+			} else if (strings.Contains(mustExp,
+			"/scommon:operation/scommon:operation != 'DELETE'") == true) {
+				op = op | OP_DELETE
+			}
+
+			//store the current table if aggregate function like count() is used
+			/*if (strings.Contains(mustExp, "count") == true) {
+				tblInfo.tablesForMustExp[tblName] = op
+			}*/
 
 			//check which table name is present in the must expression
 			for tblNameSrch, _ := range modelInfo.tableInfo {
@@ -336,11 +376,11 @@ func addTableNamesForMustExp() {
 				}
 				//Table name should appear like "../VLAN_MEMBER/tagging_mode' or '
 				// "/prt:PORT/prt:ifname"
-				re := regexp.MustCompile(fmt.Sprintf(".*[/]([a-zA-Z]*:)?%s", tblNameSrch))
+				re := regexp.MustCompile(fmt.Sprintf(".*[/]([a-zA-Z]*:)?%s[\\[/]", tblNameSrch))
 				matches := re.FindStringSubmatch(mustExp)
 				if (len(matches) > 0) {
 					//stores the table name 
-					tblInfo.tablesForMustExp[tblNameSrch] = true
+					tblInfo.tablesForMustExp[tblNameSrch] = op
 				}
 			}
 		}
@@ -372,7 +412,7 @@ func getRedisToYangKeys(tableName string, redisKey string)[]keyValuePairStruct{
 	keyVals := strings.Split(redisKey, modelInfo.tableInfo[tableName].redisKeyDelim) //split by DB separator
 	//Store patterns for each key components by splitting using key delim
 	keyPatterns := strings.Split(modelInfo.tableInfo[tableName].redisKeyPattern,
-	                            modelInfo.tableInfo[tableName].redisKeyDelim) //split by DB separator
+			modelInfo.tableInfo[tableName].redisKeyDelim) //split by DB separator
 
 	if (len(keyNames) != len(keyVals)) {
 		return nil //number key names and values does not match
@@ -399,57 +439,64 @@ func getRedisToYangKeys(tableName string, redisKey string)[]keyValuePairStruct{
 
 
 //Add child node to a parent node
-func(c *CVL) addChildNode1(tableName string, parent *yparser.YParserNode, name string) *yparser.YParserNode {
+func(c *CVL) addChildNode(tableName string, parent *yparser.YParserNode, name string) *yparser.YParserNode {
 
 	//return C.lyd_new(parent, modelInfo.tableInfo[tableName].module, C.CString(name))
 	return c.yp.AddChildNode(modelInfo.tableInfo[tableName].module, parent, name)
 }
 
-/*
-func (c *CVL) addChildNode(parent *xmlquery.Node, xmlChildNode *xmlquery.Node) {
-	xmlChildNode.Parent = parent
-	if (parent.FirstChild == nil) {
-		parent.FirstChild = xmlChildNode
-	} else  {
-		parent.LastChild.NextSibling = xmlChildNode
-	}
-	parent.LastChild = xmlChildNode
-}
-*/
-
-//Add all other table data for validating all 'must' exp for tableName
-func (c *CVL) addTableDataForMustExp(tableName string) CVLRetCode {
-
+//Add specific entries by looking at must expression
+//Must expression may need single or multiple entries
+//It can be within same table or across multiple tables
+//Aggregate function such count() can be quite expensive and 
+//should be avoid through this function
+func (c *CVL) addTableEntryForMustExp(op CVLOperation, tableName string) CVLRetCode {
 	if (modelInfo.tableInfo[tableName].mustExp == nil) {
 		return CVL_SUCCESS
 	}
 
-	for mustTblName, _ := range modelInfo.tableInfo[tableName].tablesForMustExp {
+	return CVL_SUCCESS
+}
+
+//Add all other table data for validating all 'must' exp for tableName
+func (c *CVL) addTableDataForMustExp(op CVLOperation, tableName string) CVLRetCode {
+	if (modelInfo.tableInfo[tableName].mustExp == nil) {
+		return CVL_SUCCESS
+	}
+
+	for mustTblName, mustOp := range modelInfo.tableInfo[tableName].tablesForMustExp {
+		//First check if must expression should be executed for the given operation
+		if (mustOp != OP_NONE) && ((mustOp & op) == OP_NONE) {
+			//must to be excuted for particular operation, but current operation 
+			//is not the same one
+			continue
+		}
+
 		//Check in global cache first and merge to session cache
 		if topNode, _ := dbCacheGet(mustTblName); topNode != nil {
 			var errObj yparser.YParserError
 			//If global cache has the table, add to the session validation
-			//TRACE_LOG(1, "Adding global cache to session cache for table %s", tableName)
-			util.TRACE_LOG(1, util.TRACE_CACHE, "Adding global cache to session cache for table %s", tableName)
+			TRACE_LOG(INFO_API, TRACE_CACHE, "Adding global cache to session cache for table %s", tableName)
 			if errObj = c.yp.CacheSubtree(true, topNode); errObj.ErrCode != yparser.YP_SUCCESS {
 				return CVL_SYNTAX_ERROR
 			}
 		} else { //Put the must table in global table and add to session cache
+			cvg.cv.chkLeafRefWithOthCache = true
 			dbCacheSet(false, mustTblName, 100*DEFAULT_CACHE_DURATION) //Keep the cache for default duration
+			cvg.cv.chkLeafRefWithOthCache = false
+
 			if topNode, ret := dbCacheGet(mustTblName); topNode != nil {
 				var errObj yparser.YParserError
 				//If global cache has the table, add to the session validation
-				//TRACE_LOG(1, "Global cache created, add the data to session cache for table %s", tableName)
-				util.TRACE_LOG(1, util.TRACE_CACHE, "Global cache created, add the data to session cache for table %s", tableName)
+				TRACE_LOG(INFO_API, TRACE_CACHE, "Global cache created, add the data to session cache for table %s", tableName)
 				if errObj = c.yp.CacheSubtree(true, topNode); errObj.ErrCode != yparser.YP_SUCCESS {
 					return CVL_SYNTAX_ERROR
 				}
 			} else if (ret == CVL_SUCCESS) {
-				//TRACE_LOG(1, "Global cache empty, no data in Redis for table %s", tableName)
-				util.TRACE_LOG(1, util.TRACE_CACHE, "Global cache empty, no data in Redis for table %s", tableName)
+				TRACE_LOG(INFO_API, TRACE_CACHE, "Global cache empty, no data in Redis for table %s", tableName)
 				return CVL_SUCCESS
 			} else {
-				CVL_LOG(util.ERROR ,"Could not create glocal cache for table %s", mustTblName)
+				CVL_LOG(ERROR ,"Could not create global cache for table %s", mustTblName)
 				return CVL_ERROR
 			}
 
@@ -479,7 +526,7 @@ func (c *CVL) addTableDataForMustExp(tableName string) CVLRetCode {
 	return CVL_SUCCESS
 }
 
-func (c *CVL) addUpdateDataToCache(tableName string, redisKey string) {
+func (c *CVL) addTableEntryToCache(tableName string, redisKey string) {
 	if (c.tmpDbCache[tableName] == nil) {
 		c.tmpDbCache[tableName] = map[string]interface{}{redisKey: nil}
 	} else {
@@ -504,7 +551,7 @@ func (c *CVL) checkDeleteConstraint(cfgData []CVLEditConfigData,
 	//The entry getting deleted might have been referred from multiple tables
 	//Return failure if at-least one table is using this entry
 	for _, leafRef := range leafRefs {
-		TRACE_LOG(1, "Checking delete constraint for leafRef %s/%s", leafRef.tableName, leafRef.field)
+		TRACE_LOG(INFO_API, (TRACE_DELETE | TRACE_SEMANTIC), "Checking delete constraint for leafRef %s/%s", leafRef.tableName, leafRef.field)
 		//Check in dependent data first, if the referred entry is already deleted
 		leafRefDeleted := false
 		for _, cfgDataItem := range cfgData {
@@ -527,7 +574,7 @@ func (c *CVL) checkDeleteConstraint(cfgData []CVLEditConfigData,
 		refKeyVal, err := luaScripts["find_key"].Run(redisClient, nokey, leafRef.tableName,
 		modelInfo.tableInfo[leafRef.tableName].redisKeyDelim, leafRef.field, keyVal).Result()
 		if (err == nil &&  refKeyVal != "") {
-			TRACE_LOG(1, "Delete will violate the constraint as entry %s is referred in %s", tableName, refKeyVal)
+			CVL_LOG(ERROR, "Delete will violate the constraint as entry %s is referred in %s", tableName, refKeyVal)
 
 			return CVL_SEMANTIC_ERROR
 		}
@@ -613,6 +660,22 @@ func (c *CVL) addLeafRef(config bool, tableName string, name string, value strin
 			if (matches != nil && len(matches) == 5) { //whole + 4 sub matches
 				refTableName := matches[2]
 				redisKey := value
+
+				//Check if leafref dependency can also be met from 'must' table
+				if (c.chkLeafRefWithOthCache == true) {
+					found := false
+					for mustTbl, _ := range modelInfo.tableInfo[tableName].tablesForMustExp {
+						if mustTbl == refTableName {
+							found = true
+							break
+						}
+					}
+					if (found == true) {
+						//Leafref data will be available from must table dep data, skip this leafref entry
+						continue
+					}
+				}
+
 				//only key is there, value wil be fetched and stored here, 
 				//if value can't fetched this entry will be deleted that time
 				if (c.tmpDbCache[refTableName] == nil) {
@@ -631,7 +694,7 @@ func (c *CVL) addLeafRef(config bool, tableName string, name string, value strin
 }
 
 
-func (c *CVL) addChildLeaf1(config bool, tableName string, parent *yparser.YParserNode, name string, value string) {
+func (c *CVL) addChildLeaf(config bool, tableName string, parent *yparser.YParserNode, name string, value string) {
 	//Batch leaf creation
 	c.batchLeaf = c.batchLeaf + name + "#" + value + "#"
 	//Check if this leaf has leafref,
@@ -641,43 +704,6 @@ func (c *CVL) addChildLeaf1(config bool, tableName string, parent *yparser.YPars
 	c.addLeafRef(config, tableName, name, value)
 }
 
-/*
-func (c *CVL) addChildLeaf(config bool, tableName string, parent *xmlquery.Node, name string, value string) *xmlquery.Node{
-	//Create leaf name
-	xmlLeafNode := &xmlquery.Node{
-		Data: name,
-		Type: xmlquery.ElementNode,
-	}
-
-	//Create leaf text
-	xmlLeafNodeText := &xmlquery.Node{
-		Data: value,
-		Type: xmlquery.TextNode,
-	}
-
-	//Attach leaf node to its parent
-	xmlLeafNode.Parent = parent
-	if (parent.FirstChild == nil) {
-		parent.FirstChild = xmlLeafNode
-	} else  {
-		parent.LastChild.NextSibling = xmlLeafNode
-	}
-	parent.LastChild = xmlLeafNode
-
-	//Attach leaf text to leaf node
-	xmlLeafNodeText.Parent = xmlLeafNode
-	xmlLeafNode.FirstChild = xmlLeafNodeText
-	xmlLeafNode.LastChild = xmlLeafNodeText
-
-	//Check if this leaf has leafref,
-	//If so add the add redis key to its table so that those 
-	// details can be fetched for dependency validation
-
-	c.addLeafRef(config, tableName, name, value)
-
-	return xmlLeafNode
-}
-*/
 
 func (c *CVL) checkFieldMap(fieldMap *map[string]string) map[string]interface{} {
 	fieldMapNew := map[string]interface{}{}
@@ -704,137 +730,58 @@ func (c *CVL) checkFieldMap(fieldMap *map[string]string) map[string]interface{} 
 	return fieldMapNew
 }
 
-//populate redis data to cache
-func (c *CVL) fetchDataToTmpCache1() *yparser.YParserNode {
-	entryToFetch := 0
-	var root *yparser.YParserNode = nil
-	var errObj yparser.YParserError
+//Fetch given table entries using pipeline
+func (c *CVL) fetchTableDataToTmpCache(tableName string, dbKeys map[string]interface{}) int {
 
-	for entryToFetch = 1; entryToFetch > 0; { //Force to enter the loop for first time
-		//Repeat until all entries are fetched 
-		entryToFetch = 0
-		for tableName, dbKeys := range c.tmpDbCache { //for each table
+	TRACE_LOG(INFO_API, TRACE_CACHE, "\n%v, Entered fetchTableDataToTmpCache", time.Now())
 
-			if (len(dbKeys.(map[string]interface{}))  == 0) {
-				continue
-			}
+	totalCount := len(dbKeys)
+	if (totalCount == 0) {
+		//No entry to be fetched
+		return 0
+	}
 
-			mCmd := map[string]*redis.StringStringMapCmd{}
-			pipe := redisClient.Pipeline()
-
-			for dbKey, val := range dbKeys.(map[string]interface{}) { //for all keys
-				if (val != nil) { //skip entry already fetched
-					mapTable := c.tmpDbCache[tableName]
-					delete(mapTable.(map[string]interface{}), dbKey) //delete entry already fetched
-					continue
-				}
-				entryToFetch = entryToFetch + 1
-
-				redisKey := tableName + modelInfo.tableInfo[tableName].redisKeyDelim + dbKey
-				//Check in global cache first and merge to session cache
-
-				//Otherwise fetch it from Redis
-				mCmd[dbKey] = pipe.HGetAll(redisKey) //write into pipeline
-				if mCmd[dbKey] == nil {
-					TRACE_LOG(1, "Failed pipe.HGetAll('%s')", redisKey)
-				}
-			}
-
-			_, err := pipe.Exec()
-			if err != nil {
-				TRACE_LOG(1, "Failed to fetch details for table %s", tableName)
-			}
-
+	entryFetched := 0
+	bulkCount := 0
+	bulkKeys := []string{}
+	for dbKey, val := range dbKeys { //for all keys
+		if (val != nil) { //skip entry already fetched
 			mapTable := c.tmpDbCache[tableName]
-
-			for key, val := range mCmd {
-				res, err := val.Result()
-				if (err != nil || len(res) == 0) {
-					//no data found, don't keep blank entry
-					delete(mapTable.(map[string]interface{}), key)
-					continue
-				}
-				//exclude table name and delim
-				keyOnly := key
-				fieldMap := c.checkFieldMap(&res)
-				mapTable.(map[string]interface{})[keyOnly] = fieldMap
-			}
-
-			pipe.Close()
+			delete(mapTable.(map[string]interface{}), dbKey) //delete entry already fetched
+			continue
 		}
 
-		for tableName, dbKeys := range c.tmpDbCache { //for each table
-			//if (len(c.tmpDbCache[tableName].(map[string]interface{})) == 0) {
-			if (len(dbKeys.(map[string]interface{}))  == 0) {
-				//If no table entry delete the table entry
-				 delete(c.tmpDbCache, tableName)
-				 continue
-			}
-		}
+		bulkKeys = append(bulkKeys, dbKey)
+		bulkCount = bulkCount + 1
 
-		if (entryToFetch == 0) {
-			//No more entry to fetch
-			break
-		}
-
-		if (util.Tracing == true) {
-			jsonDataBytes, _ := json.Marshal(c.tmpDbCache)
-			jsonData := string(jsonDataBytes)
-			TRACE_LOG(1, "Top Node=%v\n", jsonData)
-		}
-
-		data, err := jsonquery.ParseJsonMap(&c.tmpDbCache)
-
-		if (err != nil) {
-			return nil
-		}
-
-		for jsonNode := data.FirstChild; jsonNode != nil; jsonNode=jsonNode.NextSibling {
-			TRACE_LOG(1, "Top Node=%v\n", jsonNode.Data)
-			//Visit each top level list in a loop for creating table data
-			topNode, _ := c.generateTableData1(true, jsonNode)
-			if (root == nil) {
-				root = topNode
-			} else {
-				if root, errObj = c.yp.MergeSubtree(root, topNode); errObj.ErrCode != yparser.YP_SUCCESS {
-					return nil
-				}
-			}
-		}
-	}
-
-	if root != nil && util.Tracing == true {
-		dumpStr := c.yp.NodeDump(root)
-		TRACE_LOG(5, "Dependent Data = %v\n", dumpStr)
-	}
-
-	return root
-}
-
-
-/*
-func (c *CVL) fetchDataToTmpCache() string {
-	for tableName, dbKeys := range c.tmpDbCache { //for each table
-
-		if (len(dbKeys.(map[string]interface{}))  == 0) {
+		if(bulkCount != totalCount) && ((bulkCount % MAX_BULK_ENTRIES_IN_PIPELINE) != 0) {
+			//Accumulate entries to be fetched
 			continue
 		}
 
 		mCmd := map[string]*redis.StringStringMapCmd{}
+
 		pipe := redisClient.Pipeline()
 
-		for dbKey, _ := range dbKeys.(map[string]interface{}) { //for all keys
+		for _, dbKey := range bulkKeys {
+
 			redisKey := tableName + modelInfo.tableInfo[tableName].redisKeyDelim + dbKey
+			//Check in global cache first and merge to session cache
+
+			//Otherwise fetch it from Redis
 			mCmd[dbKey] = pipe.HGetAll(redisKey) //write into pipeline
 			if mCmd[dbKey] == nil {
-				TRACE_LOG(1, "Failed pipe.HGetAll('%s')", redisKey)
+				CVL_LOG(ERROR, "Failed pipe.HGetAll('%s')", redisKey)
 			}
 		}
 
 		_, err := pipe.Exec()
 		if err != nil {
-			TRACE_LOG(1, "Failed to fetch details for table %s", tableName)
+			CVL_LOG(ERROR, "Failed to fetch details for table %s", tableName)
+			return 0
 		}
+		pipe.Close()
+		bulkKeys = nil
 
 		mapTable := c.tmpDbCache[tableName]
 
@@ -847,154 +794,91 @@ func (c *CVL) fetchDataToTmpCache() string {
 			}
 			//exclude table name and delim
 			keyOnly := key
-			//TBD: Need to check field name like <NULL>(to be deleted)
-			//and 'members@' (strip '@')
-			//store all field values
 			fieldMap := c.checkFieldMap(&res)
 			mapTable.(map[string]interface{})[keyOnly] = fieldMap
+			entryFetched = entryFetched + 1
 		}
 
-		pipe.Close()
+		runtime.Gosched()
 	}
 
-	jsonDataBytes, _ := json.Marshal(c.tmpDbCache)
-	jsonData := string(jsonDataBytes)
+	TRACE_LOG(INFO_API, TRACE_CACHE,"\n%v, Exiting fetchTableDataToTmpCache", time.Now())
 
-	data, err := jsonquery.Parse(strings.NewReader(jsonData))
+	return entryFetched
+}
 
-	if (err != nil) {
-		return ""
-	}
+//populate redis data to cache
+func (c *CVL) fetchDataToTmpCache() *yparser.YParserNode {
+	TRACE_LOG(INFO_API, TRACE_CACHE, "\n%v, Entered fetchToTmpCache", time.Now())
 
-	doc := &xmlquery.Node{
-		Type: xmlquery.DeclarationNode,
-		Data: "xml",
-		Attr: []xml.Attr{
-			xml.Attr{Name: xml.Name{Local: "version"}, Value: "1.0"},
-		},
-	}
+	entryToFetch := 0
+	var root *yparser.YParserNode = nil
+	var errObj yparser.YParserError
 
-	var xmlNode *xmlquery.Node
-	//Generate xml data from status JSON data
-	for jsonNode := data.FirstChild; jsonNode != nil; jsonNode=jsonNode.NextSibling {
-		//TRACE_LOG(3, "Top Status Node=%v\n", jsonNode.Data)
-		//Visit each top level list in a loop for creating table data
-		xmlNode, _= c.generateTableData(false, jsonNode)
+	for entryToFetch = 1; entryToFetch > 0; { //Force to enter the loop for first time
+		//Repeat until all entries are fetched 
+		entryToFetch = 0
+		for tableName, dbKeys := range c.tmpDbCache { //for each table
+			entryToFetch = entryToFetch + c.fetchTableDataToTmpCache(tableName, dbKeys.(map[string]interface{}))
+		} //for each table
 
-		xmlNode.Parent = doc
-		if doc.FirstChild == nil {
-			doc.FirstChild = xmlNode
-			doc.LastChild = xmlNode
-		} else {
-			//If duplicate top node exists add child subtree in the existing top node
-			dupTopNode := xmlquery.Find(doc, fmt.Sprintf("/%s", xmlNode.Data))
-			if (dupTopNode != nil) {
-				dupTopNode[0].LastChild.NextSibling = xmlNode.FirstChild
-				dupTopNode[0].LastChild = xmlNode.LastChild
-			} else {
-				doc.LastChild.NextSibling = xmlNode
-				doc.LastChild = xmlNode
+		//If no table entry delete the table  itself
+		for tableName, dbKeys := range c.tmpDbCache { //for each table
+			if (len(dbKeys.(map[string]interface{}))  == 0) {
+				 delete(c.tmpDbCache, tableName)
+				 continue
 			}
 		}
+
+		if (entryToFetch == 0) {
+			//No more entry to fetch
+			break
+		}
+
+		if (Tracing == true) {
+			jsonDataBytes, _ := json.Marshal(c.tmpDbCache)
+			jsonData := string(jsonDataBytes)
+			TRACE_LOG(INFO_API, TRACE_CACHE, "Top Node=%v\n", jsonData)
+		}
+
+		data, err := jsonquery.ParseJsonMap(&c.tmpDbCache)
+
+		if (err != nil) {
+			return nil
+		}
+
+		//Build yang tree for each table and cache it
+		for jsonNode := data.FirstChild; jsonNode != nil; jsonNode=jsonNode.NextSibling {
+			TRACE_LOG(INFO_API, TRACE_CACHE, "Top Node=%v\n", jsonNode.Data)
+			//Visit each top level list in a loop for creating table data
+			topNode, _ := c.generateTableData(true, jsonNode)
+			if (root == nil) {
+				root = topNode
+			} else {
+				if root, errObj = c.yp.MergeSubtree(root, topNode); errObj.ErrCode != yparser.YP_SUCCESS {
+					return nil
+				}
+			}
+		}
+	} // until all dependent data is fetched
+
+	if root != nil && Tracing == true {
+		dumpStr := c.yp.NodeDump(root)
+		TRACE_LOG(INFO_DETAIL, TRACE_CACHE, "Dependent Data = %v\n", dumpStr)
 	}
 
-	if (doc.FirstChild == nil) {
-		return "";
-	}
-
-	yangXml := doc.OutputXML(true)
-	TRACE_LOG(5, "Dependent Data = %s\n", yangXml)
-	return yangXml
+	TRACE_LOG(INFO_API, TRACE_CACHE, "\n%v, Exiting fetchToTmpCache", time.Now())
+	return root
 }
-*/
+
 
 func (c *CVL) clearTmpDbCache() {
-	for key := range c.tmpDbCache {
+	for key, _ := range c.tmpDbCache {
 		delete(c.tmpDbCache, key)
 	}
 }
 
-/*
-//This function is not used currently
-func (c *CVL) addStatusData(tableName string) *xmlquery.Node {
-	//Get all keys from DB
-	pattern := tableName + modelInfo.tableInfo[tableName].redisKeyDelim + "*"
-	dbKeys, err := redisClient.Keys(pattern).Result()
-
-	if (err != nil) {
-		return nil
-	}
-
-	mCmd := map[string]*redis.StringStringMapCmd{}
-	pipe := redisClient.Pipeline()
-
-	for _, dbKey := range dbKeys {
-		if ((dbKey == "PORT_TABLE:PortConfigDone") ||
-		(dbKey == "PORT_TABLE:PortInitDone")) {
-			continue
-		}
-		mCmd[dbKey] = pipe.HGetAll(dbKey)
-		if err != nil {
-			return nil
-		}
-	}
-	_, err = pipe.Exec()
-	if err != nil {
-		return nil
-	}
-
-	mapTable := make(map[string]interface{})
-	mapData := make(map[string]interface{})
-
-	for key, val := range mCmd {
-		res, _ := val.Result()
-		//exclude table name and delim
-		keyOnly := key[len(tableName + modelInfo.tableInfo[tableName].redisKeyDelim):]
-		mapData[keyOnly] = res 
-	}
-	mapTable[tableName] = mapData
-	jsonData, err := json.Marshal(mapTable)
-
-	data, err := jsonquery.Parse(strings.NewReader(string(jsonData)))
-
-	if (err != nil) {
-		return nil
-	}
-
-	doc := &xmlquery.Node{   //module level top level node will reduce namespace repition
-		Data: "top",
-		Type: xmlquery.ElementNode,
-	}
-
-	var xmlNode *xmlquery.Node
-
-	for jsonNode := data.FirstChild; jsonNode != nil; jsonNode=jsonNode.NextSibling {
-		TRACE_LOG(1, "Leafref table top node=%v\n", jsonNode.Data)
-		//Visit each top level list in a loop for creating table data
-		xmlNode, _= c.generateTableData(false, jsonNode)
-
-		xmlNode.Parent = doc
-		if doc.FirstChild == nil {
-			doc.FirstChild = xmlNode
-			doc.LastChild = xmlNode
-		} else {
-			//If duplicate top node exists add child subtree in the existing top node
-			dupTopNode := xmlquery.Find(doc, fmt.Sprintf("/%s", xmlNode.Data))
-			if (dupTopNode != nil) {
-				dupTopNode[0].LastChild.NextSibling = xmlNode.FirstChild
-				dupTopNode[0].LastChild = xmlNode.LastChild
-			} else {
-				doc.LastChild.NextSibling = xmlNode
-				doc.LastChild = xmlNode
-			}
-		}
-	}
-
-	return doc
-}
-*/
-
-func (c *CVL) generateTableFieldsData1(config bool, tableName string, jsonNode *jsonquery.Node,
+func (c *CVL) generateTableFieldsData(config bool, tableName string, jsonNode *jsonquery.Node,
 parent *yparser.YParserNode) CVLRetCode {
 
 	//Traverse fields
@@ -1007,12 +891,12 @@ parent *yparser.YParserNode) CVLRetCode {
 
 			if (len(modelInfo.tableInfo[tableName].mapLeaf) == 2) {//mapping should have two leaf always
 				//Values should be stored inside another list as map table
-				listNode := c.addChildNode1(tableName, parent, tableName) //Add the list to the top node
-				c.addChildLeaf1(config, tableName,
+				listNode := c.addChildNode(tableName, parent, tableName) //Add the list to the top node
+				c.addChildLeaf(config, tableName,
 				listNode, modelInfo.tableInfo[tableName].mapLeaf[0],
 				jsonFieldNode.Data)
 
-				c.addChildLeaf1(config, tableName,
+				c.addChildLeaf(config, tableName,
 				listNode, modelInfo.tableInfo[tableName].mapLeaf[1],
 				jsonFieldNode.FirstChild.Data)
 
@@ -1025,11 +909,11 @@ parent *yparser.YParserNode) CVLRetCode {
 				(strings.HasSuffix(jsonFieldNode.FirstChild.Data, "]")) &&
 				(strings.Index(jsonFieldNode.FirstChild.Data, "|") > 0) {*/
 
-					c.addChildLeaf1(config, tableName,
+					c.addChildLeaf(config, tableName,
 					parent, jsonFieldNode.Data,
 					hashRefMatch[2]) //take hashref key value
 				} else {
-					c.addChildLeaf1(config, tableName,
+					c.addChildLeaf(config, tableName,
 					parent, jsonFieldNode.Data,
 					jsonFieldNode.FirstChild.Data)
 				}
@@ -1042,66 +926,6 @@ parent *yparser.YParserNode) CVLRetCode {
 			for  arrayNode:=jsonFieldNode.FirstChild; arrayNode != nil;
 
 			arrayNode = arrayNode.NextSibling {
-				c.addChildLeaf1(config, tableName,
-				parent, jsonFieldNode.Data,
-				arrayNode.FirstChild.Data)
-			}
-		}
-	}
-
-	return CVL_SUCCESS
-}
-
-/*
-//Generate Yang xml for all fields in a hash
-func (c *CVL) generateTableFieldsData(config bool, tableName string, jsonNode *jsonquery.Node,
-parent *xmlquery.Node) CVLRetCode {
-
-	//Traverse fields
-	for jsonFieldNode := jsonNode.FirstChild; jsonFieldNode!= nil;
-	jsonFieldNode = jsonFieldNode.NextSibling {
-		//Add fields as leaf to the list
-		if (jsonFieldNode.Type == jsonquery.ElementNode &&
-		jsonFieldNode.FirstChild.Type == jsonquery.TextNode) {
-
-			if (len(modelInfo.tableInfo[tableName].mapLeaf) == 2) {//mapping should have two leaf always
-				//Values should be stored inside another list as map table
-				xmlNode := &xmlquery.Node{
-					Data: tableName,
-					Type: xmlquery.ElementNode,
-				}
-				c.addChildNode(parent, xmlNode)
-
-				c.addChildLeaf(config, tableName,
-				xmlNode, modelInfo.tableInfo[tableName].mapLeaf[0],
-				jsonFieldNode.Data)
-
-				c.addChildLeaf(config, tableName,
-				xmlNode, modelInfo.tableInfo[tableName].mapLeaf[1],
-				jsonFieldNode.FirstChild.Data)
-
-			} else {
-				//check if it is hash-ref, then need to add only key from "TABLE|k1"
-				//re := regexp.MustCompile(`\[(.*)\|(.*)\]`)
-				hashRefMatch := reHashRef.FindStringSubmatch(jsonFieldNode.FirstChild.Data)
-
-				if (hashRefMatch != nil && len(hashRefMatch) == 3) {
-					c.addChildLeaf(config, tableName,
-					parent, jsonFieldNode.Data,
-					hashRefMatch[2]) //take hashref key value
-				} else {
-					c.addChildLeaf(config, tableName,
-					parent, jsonFieldNode.Data,
-					jsonFieldNode.FirstChild.Data)
-				}
-			}
-
-		} else if (jsonFieldNode.Type == jsonquery.ElementNode &&
-		jsonFieldNode.FirstChild.Type == jsonquery.ElementNode) {
-			//Array data e.g. VLAN members
-			for  arrayNode:=jsonFieldNode.FirstChild; arrayNode != nil;
-
-			arrayNode = arrayNode.NextSibling {
 				c.addChildLeaf(config, tableName,
 				parent, jsonFieldNode.Data,
 				arrayNode.FirstChild.Data)
@@ -1111,9 +935,8 @@ parent *xmlquery.Node) CVLRetCode {
 
 	return CVL_SUCCESS
 }
-*/
 
-func (c *CVL) generateTableData1(config bool, jsonNode *jsonquery.Node)(*yparser.YParserNode, CVLErrorInfo) {
+func (c *CVL) generateTableData(config bool, jsonNode *jsonquery.Node)(*yparser.YParserNode, CVLErrorInfo) {
 	var cvlErrObj CVLErrorInfo
 	tableName := fmt.Sprintf("%s",jsonNode.Data)
 	c.batchLeaf = ""
@@ -1145,18 +968,18 @@ func (c *CVL) generateTableData1(config bool, jsonNode *jsonquery.Node)(*yparser
 		for  ; totalKeyComb > 0 ; totalKeyComb-- {
 
 			//Add table i.e. create list element
-			listNode := c.addChildNode1(tableName, topNode, tableName) //Add the list to the top node
+			listNode := c.addChildNode(tableName, topNode, tableName) //Add the list to the top node
 
 			//For each key combination
 			//Add keys as leaf to the list
 			for idx = 0; idx < keyCompCount; idx++ {
-				c.addChildLeaf1(config, tableName,
+				c.addChildLeaf(config, tableName,
 				listNode, keyValuePair[idx].key,
 				keyValuePair[idx].values[keyIndices[idx]])
 			}
 
 			//Get all fields under the key field and add them as children of the list
-			c.generateTableFieldsData1(config, tableName, jsonNode, listNode)
+			c.generateTableFieldsData(config, tableName, jsonNode, listNode)
 
 			//Check which key elements left after current key element
 			var next int = keyCompCount - 1
@@ -1175,8 +998,7 @@ func (c *CVL) generateTableData1(config bool, jsonNode *jsonquery.Node)(*yparser
 				keyIndices[idx] = 0
 			}
 
-			//TRACE_LOG(1, "Starting batch leaf creation - %s\n", c.batchLeaf)
-			util.TRACE_LOG(1, util.TRACE_CACHE, "Starting batch leaf creation - %s\n", c.batchLeaf)
+			TRACE_LOG(INFO_API, TRACE_CACHE, "Starting batch leaf creation - %s\n", c.batchLeaf)
 			//process batch leaf creation
 			if errObj := c.yp.AddMultiLeafNodes(modelInfo.tableInfo[tableName].module, listNode, c.batchLeaf); errObj.ErrCode != yparser.YP_SUCCESS {
 				cvlErrObj = CreateCVLErrObj(errObj)
@@ -1189,100 +1011,7 @@ func (c *CVL) generateTableData1(config bool, jsonNode *jsonquery.Node)(*yparser
 	return topNode, cvlErrObj
 }
 
-/*
-// Generate YANG xml instance for Redis table
-func (c *CVL) generateTableData(config bool, jsonNode *jsonquery.Node)(*xmlquery.Node, CVLRetCode) {
-
-	tableName := fmt.Sprintf("%s",jsonNode.Data)
-
-	//Create top level container based on first list
-	xmlTopNode := &xmlquery.Node{   //module level top level node will reduce namespace repition
-		Data: modelInfo.tableInfo[tableName].modelName,
-		Type: xmlquery.ElementNode,
-		Attr: []xml.Attr{
-			xml.Attr{Name: xml.Name{Local: "xmlns"},
-			Value:  modelInfo.modelNs[modelInfo.tableInfo[tableName].modelName].ns},
-		},
-	}
-
-	//Traverse each key instance
-	for jsonNode = jsonNode.FirstChild; jsonNode != nil; jsonNode = jsonNode.NextSibling {
-
-		//For each field check if is key 
-		//If it is key, create list as child of top container
-		// Get all key name/value pairs
-		keyValuePair := getRedisToYangKeys(tableName, jsonNode.Data)
-		keyCompCount := len(keyValuePair)
-		totalKeyComb := 1
-		var keyIndices []int
-
-		//Find number of all key combinations
-		//Each key can have one or more key values, which results in nk1 * nk2 * nk2 combinations
-		idx := 0
-		for i,_ := range keyValuePair {
-			totalKeyComb = totalKeyComb * len(keyValuePair[i].values)
-			keyIndices = append(keyIndices, 0)
-		}
-
-		for  ; totalKeyComb > 0 ; totalKeyComb-- {
-
-			//Add table i.e. create list element
-			xmlNode := &xmlquery.Node{
-				Data: tableName,
-				Type: xmlquery.ElementNode,
-			}
-
-			//For each key combination
-			//Add keys as leaf to the list
-			for idx = 0; idx < keyCompCount; idx++ {
-				c.addChildLeaf(config, tableName,
-				xmlNode, keyValuePair[idx].key,
-				keyValuePair[idx].values[keyIndices[idx]])
-			}
-
-
-			c.addChildNode(xmlTopNode, xmlNode) //Add the list to the top node
-
-			//Get all fields under the key field and add them as children of the list
-			c.generateTableFieldsData(config, tableName, jsonNode, xmlNode)
-
-
-			//Check which key elements left after current key element
-			var next int = keyCompCount - 1
-			for  ((next > 0) && ((keyIndices[next] +1) >=  len(keyValuePair[next].values))) {
-				next--
-			}
-			//No more combination possible
-			if (next < 0) {
-				break
-			}
-
-			keyIndices[next]++
-
-			//Reset indices for all other key elements
-			for idx = next+1;  idx < keyCompCount; idx++ {
-				keyIndices[idx] = 0
-			}
-		}
-	}
-
-
-	return xmlTopNode, CVL_SUCCESS
-}
-*/
-
-/*
-func jsonMapToYangTree(jsonMap *map[string]interface{}) *yparser.YParserNode {
-	jsonDoc, _ := jsonquery.ParseJsonMap(jsonMap)
-
-	if (jsonDoc == nil) {
-		return nil
-	}
-	return nil
-}
-*/
-
-func (c *CVL) translateToYang1(jsonMap *map[string]interface{}) (*yparser.YParserNode, CVLErrorInfo) {
+func (c *CVL) translateToYang(jsonMap *map[string]interface{}) (*yparser.YParserNode, CVLErrorInfo) {
 
 	var  cvlErrObj CVLErrorInfo
 	//Parse the map data to json tree
@@ -1292,11 +1021,12 @@ func (c *CVL) translateToYang1(jsonMap *map[string]interface{}) (*yparser.YParse
 	var errObj yparser.YParserError
 
 	for jsonNode := data.FirstChild; jsonNode != nil; jsonNode=jsonNode.NextSibling {
-		TRACE_LOG(1, "Top Node=%v\n", jsonNode.Data)
+		TRACE_LOG(INFO_API, TRACE_LIBYANG, "Top Node=%v\n", jsonNode.Data)
 		//Visit each top level list in a loop for creating table data
-		topNode, cvlErrObj  := c.generateTableData1(true, jsonNode)
+		topNode, cvlErrObj  := c.generateTableData(true, jsonNode)
 
 		if  topNode == nil {
+			cvlErrObj.ErrCode = CVL_SYNTAX_ERROR
 			return nil, cvlErrObj
 		}
 
@@ -1312,88 +1042,10 @@ func (c *CVL) translateToYang1(jsonMap *map[string]interface{}) (*yparser.YParse
 	return root, cvlErrObj
 }
 
-/*
-//Convert Redis JSON to Yang XML using translation metadata
-func (c *CVL) translateToYang(jsonData string) (*xmlquery.Node, CVLRetCode) {
-	var v interface{}
-	jsonData1 :=`{
-		"VLAN": {
-			"Vlan100": {
-				"members": [
-				"Ethernet44",
-				"Ethernet964"
-				],
-				"vlanid": "100"
-			},
-			"Vlan1200": {
-				"members": [
-				"Ethernet64",
-				"Ethernet1008"
-				],
-				"vlanid": "1200"
-			}
-		}
-	}`
-	b := []byte(jsonData1)
-	if err1 := json.Unmarshal(b, &v); err1 == nil {
-		var value map[string]interface{} = v.(map[string]interface{})
-		root, ret := c.translateToYang1(&value)
-		if ret == CVL_SUCCESS && root != nil {
-			var outBuf *C.char
-			C.lyd_print_mem(&outBuf, root, C.LYD_XML, 0)
-
-			fmt.Printf("\nLYD data = %v\n", C.GoString(outBuf))
-		}
-	}
-
-	//Parse Entire JSON file
-	data, err := jsonquery.Parse(strings.NewReader(jsonData))
-
-	if err != nil {
-		return nil, CVL_SYNTAX_ERROR
-	}
-
-	doc := &xmlquery.Node{
-		Type: xmlquery.DeclarationNode,
-		Data: "xml",
-		Attr: []xml.Attr{
-			xml.Attr{Name: xml.Name{Local: "version"}, Value: "1.0"},
-		},
-	}
-
-	//var xmlNode, prevXmlNode *xmlquery.Node
-	var xmlNode *xmlquery.Node
-
-	for jsonNode := data.FirstChild; jsonNode != nil; jsonNode=jsonNode.NextSibling {
-		TRACE_LOG(1, "Top Node=%v\n", jsonNode.Data)
-		//Visit each top level list in a loop for creating table data
-		xmlNode, _= c.generateTableData(true, jsonNode)
-
-		xmlNode.Parent = doc
-		if doc.FirstChild == nil {
-			doc.FirstChild = xmlNode
-			doc.LastChild = xmlNode
-		} else {
-			//If duplicate top node exists add child subtree in the existing top node
-			dupTopNode := xmlquery.Find(doc, fmt.Sprintf("/%s", xmlNode.Data))
-			if (dupTopNode != nil) {
-				dupTopNode[0].LastChild.NextSibling = xmlNode.FirstChild
-				dupTopNode[0].LastChild = xmlNode.LastChild
-			} else {
-				doc.LastChild.NextSibling = xmlNode
-				doc.LastChild = xmlNode
-			}
-		}
-	}
-
-	return doc, CVL_SUCCESS
-}
-*/
-
 //Validate config - syntax and semantics
-func (c *CVL) validate1 (data *yparser.YParserNode) CVLRetCode {
+func (c *CVL) validate (data *yparser.YParserNode) CVLRetCode {
 
-	depData := c.fetchDataToTmpCache1()
+	depData := c.fetchDataToTmpCache()
 	/*
 	if (depData != nil) {
 		if (0 != C.lyd_merge_to_ctx(&data, depData, C.LYD_OPT_DESTRUCT, ctx)) {
@@ -1406,7 +1058,7 @@ func (c *CVL) validate1 (data *yparser.YParserNode) CVLRetCode {
 		return CVL_SYNTAX_ERROR
 	}*/
 
-	TRACE_LOG(4, "\nValidate1 data=%v\n", c.yp.NodeDump(data))
+	TRACE_LOG(INFO_DATA, TRACE_LIBYANG, "\nValidate1 data=%v\n", c.yp.NodeDump(data))
 	errObj := c.yp.ValidateData(data, depData)
 	if yparser.YP_SUCCESS != errObj.ErrCode {
 		return CVL_FAILURE
@@ -1414,36 +1066,6 @@ func (c *CVL) validate1 (data *yparser.YParserNode) CVLRetCode {
 
 	return CVL_SUCCESS
 }
-
-/*
-	
-func (c *CVL) validate (xmlData string) CVLRetCode {
-	TRACE_LOG(1, "Validating \n%v\n....", xmlData)
-
-	data := C.lyd_parse_data_mem(ctx, C.CString(xmlData), C.LYD_XML, C.LYD_OPT_EDIT)
-	if ((C.ly_errno != 0) || (data == nil)) {
-		//fmt.Println("Parsing data failed %d\n", C.ly_errno)
-		return CVL_SYNTAX_ERROR
-	}
-
-	depData := c.fetchDataToTmpCache()
-	if (depData != "") {
-		depDataNode := C.lyd_parse_data_mem(ctx, C.CString(depData), C.LYD_XML, C.LYD_OPT_EDIT)
-
-		if (0 != C.lyd_merge_to_ctx(&data, depDataNode, C.LYD_OPT_DESTRUCT, ctx)) {
-			TRACE_LOG(1, "Failed to merge status data\n")
-		}
-	}
-
-
-	if (0 != C.lyd_data_validate(&data, C.LYD_OPT_CONFIG, ctx)) {
-                processErrorResp(ctx)
-		return CVL_SYNTAX_ERROR
-	}
-
-	return CVL_SUCCESS
-}
-*/
 
 func  CreateCVLErrObj(errObj yparser.YParserError) CVLErrorInfo {
 
@@ -1465,9 +1087,9 @@ func  CreateCVLErrObj(errObj yparser.YParserError) CVLErrorInfo {
 }
 
 //Perform syntax checks
-func (c *CVL) validateSyntax1(data *yparser.YParserNode) (CVLErrorInfo, CVLRetCode) {
+func (c *CVL) validateSyntax(data *yparser.YParserNode) (CVLErrorInfo, CVLRetCode) {
 	var cvlErrObj CVLErrorInfo
-	TRACE_LOG(1, "Validating syntax \n....")
+	TRACE_LOG(INFO_DATA, TRACE_LIBYANG, "Validating syntax \n....")
 
 	if errObj  := c.yp.ValidateSyntax(data); errObj.ErrCode != yparser.YP_SUCCESS {
 
@@ -1493,32 +1115,19 @@ func (c *CVL) validateSyntax1(data *yparser.YParserNode) (CVLErrorInfo, CVLRetCo
 	return cvlErrObj, CVL_SUCCESS
 }
 
-/*
-func (c *CVL) validateSyntax(xmlData string) (CVLRetCode, *yparser.YParserNode) {
-	TRACE_LOG(1, "Validating syntax \n%v\n....", xmlData)
-	//parsing only does syntacial checks
-	data := C.lyd_parse_data_mem(ctx, C.CString(xmlData), C.LYD_XML, C.LYD_OPT_EDIT)
-	if ((C.ly_errno != 0) || (data == nil)) {
-                processErrorResp(ctx)
-		//fmt.Println("Parsing data failed\n")
-		return CVL_SYNTAX_ERROR, nil
+//Perform semantic checks 
+func (c *CVL) validateSemantics(data *yparser.YParserNode, appDepData *yparser.YParserNode) (CVLErrorInfo, CVLRetCode) {
+	var cvlErrObj CVLErrorInfo
+	
+	if (SkipSemanticValidation() == true) {
+		return cvlErrObj, CVL_SUCCESS
 	}
 
-	return CVL_SUCCESS, data
-	return CVL_SUCCESS, nil
-}
-*/
-
-//Perform semantic checks 
-func (c *CVL) validateSemantics1(data *yparser.YParserNode, appDepData *yparser.YParserNode) (CVLErrorInfo, CVLRetCode) {
-	var cvlErrObj CVLErrorInfo
 	//Get dependent data from 
-	depData := c.fetchDataToTmpCache1() //fetch data to temp cache for temporary validation
-	//TRACE_LOG(1, "Validating semantics data=%s\n depData =%s\n, otherDepData=%s\n....", c.yp.NodeDump(data), c.yp.NodeDump(depData), c.yp.NodeDump(otherDepData))
-	util.TRACE_LOG(1, util.TRACE_SEMANTIC, "Validating semantics data=%s\n depData =%s\n, otherDepData=%s\n....", c.yp.NodeDump(data), c.yp.NodeDump(depData), c.yp.NodeDump(appDepData))
+	depData := c.fetchDataToTmpCache() //fetch data to temp cache for temporary validation
 
-	if (util.Tracing == true) {
-		TRACE_LOG(1, "Validating semantics data=%s\n depData =%s\n, appDepData=%s\n....", c.yp.NodeDump(data), c.yp.NodeDump(depData), c.yp.NodeDump(appDepData))
+	if (Tracing == true) {
+		TRACE_LOG(INFO_API, TRACE_SEMANTIC, "Validating semantics data=%s\n depData =%s\n, appDepData=%s\n....", c.yp.NodeDump(data), c.yp.NodeDump(depData), c.yp.NodeDump(appDepData))
 	}
 
 	if errObj := c.yp.ValidateSemantics(data, depData, appDepData); errObj.ErrCode != yparser.YP_SUCCESS {
@@ -1542,70 +1151,8 @@ func (c *CVL) validateSemantics1(data *yparser.YParserNode, appDepData *yparser.
 		return  cvlErrObj, retCode
 	}
 
-/*
-	//parse dependent data
-	if (depData != nil) {
-
-		//merge input data and dependent data for semantic validation
-		if (0 != C.lyd_merge_to_ctx(&data, depData, C.LYD_OPT_DESTRUCT, ctx)) {
-			TRACE_LOG(1, "Unable to merge dependent data\n")
-			return CVL_SEMANTIC_ERROR
-		}
-	}
-
-	if (appDepData != nil) { //if other dep data is provided
-		if (0 != C.lyd_merge_to_ctx(&data, appDepData, C.LYD_OPT_DESTRUCT, ctx)) {
-			TRACE_LOG(1, "Unable to merge other dependent data\n")
-			return CVL_SEMANTIC_ERROR
-		}
-	}
-
-	//Check semantic validation
-	if (0 != C.lyd_data_validate(&data, C.LYD_OPT_CONFIG, ctx)) {
-		fmt.Println("Validation failed\n")
-		return CVL_SEMANTIC_ERROR
-	}
-*/
 	return cvlErrObj ,CVL_SUCCESS
 }
-
-/*
-//func (c *CVL) validateSemantics(data *yparser.YParserNode, appDepData string) CVLRetCode {
-func (c *CVL) validateSemantics(data, appDepData string) CVLRetCode {
-
-	//Get dependent data from 
-	depData := c.fetchDataToTmpCache() //fetch data to temp cache for temporary validation
-	//parse dependent data
-	if (depData != "") {
-		depDataNode := C.lyd_parse_data_mem(ctx, C.CString(depData), C.LYD_XML, C.LYD_OPT_EDIT)
-
-		//merge input data and dependent data for semantic validation
-		if (0 != C.lyd_merge_to_ctx(&data, depDataNode, C.LYD_OPT_DESTRUCT, ctx)) {
-			TRACE_LOG(1, "Unable to merge dependent data\n")
-			return CVL_SEMANTIC_ERROR
-		}
-	}
-
-	if (appDepData != "") { //if other dep data is provided
-		appDepDataNode := C.lyd_parse_data_mem(ctx, C.CString(appDepData),
-		C.LYD_XML, C.LYD_OPT_EDIT)
-
-		if (0 != C.lyd_merge_to_ctx(&data, appDepDataNode, C.LYD_OPT_DESTRUCT, ctx)) {
-			TRACE_LOG(1, "Unable to merge other dependent data\n")
-			return CVL_SEMANTIC_ERROR
-		}
-	}
-
-	//Check semantic validation
-	if (0 != C.lyd_data_validate(&data, C.LYD_OPT_CONFIG, ctx)) {
-	if (0 != C.lyd_data_validate_all(C.CString(data), C.CString(depData), C.CString(appDepData), C.LYD_OPT_CONFIG, ctx)) {
-		fmt.Println("Validation failed\n")
-		return CVL_SEMANTIC_ERROR
-	}
-
-	return CVL_SUCCESS
-}
-*/
 
 //Add config data item to accumulate per table
 func (c *CVL) addCfgDataItem(configData *map[string]interface{}, cfgDataItem CVLEditConfigData) (string, string){
@@ -1670,7 +1217,7 @@ func dbCacheEntryGet(tableName, key string) (*yparser.YParserNode, CVLRetCode) {
 //Get the data from global cache
 func dbCacheGet(tableName string) (*yparser.YParserNode, CVLRetCode) {
 
-	TRACE_LOG(7, "Updating global cache for table %s", tableName)
+	TRACE_LOG(INFO_ALL, TRACE_CACHE, "Updating global cache for table %s", tableName)
 	dbCacheTmp, existing := cvg.db[tableName]
 
 	if (existing == false) {
@@ -1678,17 +1225,20 @@ func dbCacheGet(tableName string) (*yparser.YParserNode, CVLRetCode) {
 	}
 
 	if (dbCacheTmp.root != nil) {
-		//Update the expiry if, cache is destroyable (i.e. expiry != 0)
-		if (time.Now().After(dbCacheTmp.startTime.Add(time.Second * time.Duration(dbCacheTmp.expiry)))) {
-			//Cache expired, clear the cache
-			dbCacheClear(tableName)
+		if (dbCacheTmp.expiry != 0) {
+			//If cache is destroyable (i.e. expiry != 0), check if it has already expired.
+			//If not expired update the time stamp
+			if (time.Now().After(dbCacheTmp.startTime.Add(time.Second * time.Duration(dbCacheTmp.expiry)))) {
+				//Cache expired, clear the cache
+				dbCacheClear(tableName)
 
-			return nil, CVL_ERROR
+				return nil, CVL_ERROR
+			}
+
+			//Since the cache is used actively, update the timestamp
+			dbCacheTmp.startTime = time.Now()
+			cvg.db[tableName] = dbCacheTmp
 		}
-
-		//Since the cache is used actively, update the timestamp
-		dbCacheTmp.startTime = time.Now()
-		cvg.db[tableName] = dbCacheTmp
 
 		return dbCacheTmp.root, CVL_SUCCESS
 	} else {
@@ -1707,11 +1257,11 @@ func dbCacheSet(update bool, tableName string, expiry uint16) CVLRetCode {
 	modelInfo.tableInfo[tableName].redisKeyDelim + "*").Result()
 
 	if (err != nil) {
+		cvg.mutex.Unlock()
 		return CVL_FAILURE
 	}
 
-	//TRACE_LOG(7, "Building global cache for table %s", tableName)
-	util.TRACE_LOG(7, util.TRACE_CACHE, "Building global cache for table %s", tableName)
+	TRACE_LOG(INFO_ALL, TRACE_CACHE, "Building global cache for table %s", tableName)
 
 	tablePrefixLen := len(tableName + modelInfo.tableInfo[tableName].redisKeyDelim)
 	for _, tableKey := range tableKeys {
@@ -1726,18 +1276,19 @@ func dbCacheSet(update bool, tableName string, expiry uint16) CVLRetCode {
 	}
 
 	cvg.db[tableName] = dbCachedData{startTime:time.Now(), expiry: expiry,
-	root: cvg.cv.fetchDataToTmpCache1()}
+	root: cvg.cv.fetchDataToTmpCache()}
 
-	if (util.Tracing == true) {
-		TRACE_LOG(7, "Cached Data = %v\n", cvg.cv.yp.NodeDump(cvg.db[tableName].root))
+	if (Tracing == true) {
+		TRACE_LOG(INFO_ALL, TRACE_CACHE, "Cached Data = %v\n", cvg.cv.yp.NodeDump(cvg.db[tableName].root))
 	}
+
+	cvg.mutex.Unlock()
 
 	//install keyspace notification for updating the cache
 	if (update == false) {
 		installDbChgNotif()
 	}
 
-	cvg.mutex.Unlock()
 
 	return CVL_SUCCESS
 }
@@ -1780,7 +1331,7 @@ func installDbChgNotif() {
 }
 
 func dbCacheUpdate(tableName, key, op string) CVLRetCode {
-	TRACE_LOG(7, "Updating global cache for table %s with key %s", tableName, key)
+	TRACE_LOG(INFO_ALL, TRACE_CACHE, "Updating global cache for table %s with key %s", tableName, key)
 
 	//Find the node
 	//Delete the entry in yang tree 
@@ -1805,12 +1356,13 @@ func dbCacheUpdate(tableName, key, op string) CVLRetCode {
 		}
 
 		//Get the translated Yang tree
-		topNode := cvg.cv.fetchDataToTmpCache1()
+		topNode := cvg.cv.fetchDataToTmpCache()
 
 		//Merge the subtree with existing yang tree
 		var errObj yparser.YParserError
 		if (cvg.db[tableName].root != nil) {
 			if topNode, errObj = cvg.cv.yp.MergeSubtree(cvg.db[tableName].root, topNode); errObj.ErrCode != yparser.YP_SUCCESS {
+				cvg.mutex.Unlock()
 				return CVL_ERROR
 			}
 		}
@@ -1820,14 +1372,8 @@ func dbCacheUpdate(tableName, key, op string) CVLRetCode {
 		db.root = topNode
 		cvg.db[tableName] = db
 
-		//Delete the existing cache
-		//dbCacheClear(tableName)
-		//Add the cache again in yang tree --> TBD:Optimie
-		//dbCacheSet(true, tableName, 0)
 	case "del":
-		//NOP, alreday deleted the entry
-		//dbCacheClear(tableName)
-		//dbCacheSet(true, tableName, 0)
+		//NOP, already deleted the entry
 	}
 
 	cvg.mutex.Unlock()
@@ -1840,7 +1386,7 @@ func dbCacheClear(tableName string) CVLRetCode {
 	cvg.cv.yp.FreeNode(cvg.db[tableName].root)
 	delete(cvg.db, tableName)
 
-	TRACE_LOG(7, "Clearing global cache for table %s", tableName)
+	TRACE_LOG(INFO_ALL, TRACE_CACHE, "Clearing global cache for table %s", tableName)
 
 	return CVL_SUCCESS
 }

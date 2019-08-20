@@ -17,16 +17,16 @@ import (
 )
 
 // errorResponse defines the RESTCONF compliant error response
-// payload. It includes a list of errorInfo object.
+// payload. It includes a list of errorEntry object.
 type errorResponse struct {
 	Err struct {
-		Arr []errorInfo `json:"error"`
+		Arr []errorEntry `json:"error"`
 	} `json:"ietf-restconf:errors"`
 }
 
-// errorInfo defines the RESTCONF compilant error information
+// errorEntry defines the RESTCONF compilant error information
 // payload.
-type errorInfo struct {
+type errorEntry struct {
 	Type    errtype `json:"error-type"`
 	Tag     errtag  `json:"error-tag"`
 	AppTag  string  `json:"error-app-tag,omitempty"`
@@ -81,17 +81,22 @@ func httpServerError(msg string, args ...interface{}) error {
 // for an error object. Response payalod is formatted as per RESTCONF
 // specification (RFC8040, section 7.1). Uses json encoding.
 func prepareErrorResponse(err error, r *http.Request) (status int, data []byte, mimeType string) {
-	status, errInfo := toErrorInfo(err, r)
+	status, entry := toErrorEntry(err, r)
 	var resp errorResponse
-	resp.Err.Arr = append(resp.Err.Arr, errInfo)
+	resp.Err.Arr = append(resp.Err.Arr, entry)
 	data, _ = json.Marshal(&resp)
 	mimeType = "application/yang-data+json"
 	return
 }
 
-// formatError translates an error object into HTTP status and an
-//  errorInfo object.
-func toErrorInfo(err error, r *http.Request) (status int, errInfo errorInfo) {
+// toErrorEntry translates an error object into HTTP status and an
+// errorEntry object.
+func toErrorEntry(err error, r *http.Request) (status int, errInfo errorEntry) {
+	// By default everything is 500 Internal Server Error
+	status = http.StatusInternalServerError
+	errInfo.Type = errtypeApplication
+	errInfo.Tag = errtagOperationFailed
+
 	switch e := err.(type) {
 	case httpErrorType:
 		status = e.status
@@ -110,19 +115,25 @@ func toErrorInfo(err error, r *http.Request) (status int, errInfo errorInfo) {
 			errInfo.Tag = errtagInvalidValue
 		case http.StatusMethodNotAllowed: // 405
 			errInfo.Tag = errtagOperationNotSupported
+		case http.StatusUnsupportedMediaType:
+			errInfo.Tag = errtagInvalidValue
 		default: // 5xx and others
 			errInfo.Tag = errtagOperationFailed
 		}
 
+	case tlerr.TranslibSyntaxValidationError:
+		status = http.StatusBadRequest
+		errInfo.Type = errtypeProtocol
+		errInfo.Tag = errtagInvalidValue
+		errInfo.Message = e.ErrorStr.Error()
+
 	case tlerr.TranslibRedisClientEntryNotExist:
 		status = http.StatusNotFound
-		errInfo.Type = errtypeApplication
 		errInfo.Tag = errtagInvalidValue
 		errInfo.Message = "Entry not found"
 
 	case tlerr.TranslibCVLFailure:
 		status = http.StatusInternalServerError
-		errInfo.Type = errtypeApplication
 		errInfo.Tag = errtagInvalidValue
 		errInfo.Message = e.CVLErrorInfo.ConstraintErrMsg
 		errInfo.AppTag = e.CVLErrorInfo.ErrAppTag
@@ -139,10 +150,40 @@ func toErrorInfo(err error, r *http.Request) (status int, errInfo errorInfo) {
 			errInfo.Message = "Entry not found"
 		}
 
-	default:
-		status = http.StatusInternalServerError
-		errInfo.Type = errtypeApplication
-		errInfo.Tag = errtagOperationFailed
+	case tlerr.TranslibTransactionFail:
+		status = http.StatusConflict
+		errInfo.Type = errtypeProtocol
+		errInfo.Tag = errtagInUse
+		errInfo.Message = "Transaction failed. Please try again."
+
+	case tlerr.InternalError:
+		errInfo.Message = e.Error()
+		errInfo.Path = e.Path
+
+	case tlerr.NotSupportedError:
+		status = http.StatusMethodNotAllowed
+		errInfo.Tag = errtagOperationNotSupported
+		errInfo.Message = e.Error()
+		errInfo.Path = e.Path
+
+	case tlerr.InvalidArgsError:
+		status = http.StatusBadRequest
+		errInfo.Tag = errtagInvalidValue
+		errInfo.Message = e.Error()
+		errInfo.Path = e.Path
+
+	case tlerr.NotFoundError:
+		status = http.StatusNotFound
+		errInfo.Tag = errtagInvalidValue
+		errInfo.Message = e.Error()
+		errInfo.Path = e.Path
+
+	case tlerr.AlreadyExistsError:
+		status = http.StatusConflict
+		errInfo.Tag = errtagResourceDenied
+		errInfo.Message = e.Error()
+		errInfo.Path = e.Path
+
 	}
 
 	return

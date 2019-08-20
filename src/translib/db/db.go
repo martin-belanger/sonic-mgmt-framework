@@ -135,12 +135,15 @@ type Options struct {
 	InitIndicator      string
 	TableNameSeparator string
 	KeySeparator       string
+
+	DisableCVLCheck    bool
 }
 
 func (o Options) String() string {
 	return fmt.Sprintf(
-		"{ DBNo: %v, InitIndicator: %v, TableNameSeparator: %v, KeySeparator: %v }",
-		o.DBNo, o.InitIndicator, o.TableNameSeparator, o.KeySeparator)
+		"{ DBNo: %v, InitIndicator: %v, TableNameSeparator: %v, KeySeparator: %v , DisableCVLCheck: %v }",
+		o.DBNo, o.InitIndicator, o.TableNameSeparator, o.KeySeparator,
+		o.DisableCVLCheck)
 }
 
 type _txState int
@@ -248,10 +251,12 @@ type DB struct {
 	cv *cvl.CVL
 	cvlEditConfigData [] cvl.CVLEditConfigData
 
-	sKeys []SKey                // Subscribe Key array
+/*
+	sKeys []*SKey               // Subscribe Key array
 	sHandler HFunc              // Handler Function
 	sCh <-chan *redis.Message   // non-Nil implies SubscribeDB
-	sPubSub *redis.PubSub       // PubSub
+*/
+	sPubSub *redis.PubSub       // PubSub. non-Nil implies SubscribeDB
 	sCIP bool                   // Close in Progress
 }
 
@@ -472,6 +477,11 @@ func (d *DB) doCVL(ts * TableSpec, cvlOps []cvl.CVLOperation, key Key, vals []Va
 
 	var cvlRetCode cvl.CVLRetCode
 	var cei cvl.CVLErrorInfo
+
+	if d.Opts.DisableCVLCheck {
+		glog.Info("doCVL: CVL Disabled. Skipping CVL")
+		goto doCVLExit
+	}
 
 	// No Transaction case. No CVL.
 	if d.txState == txStateNone {
@@ -1239,6 +1249,7 @@ func (d *DB) CommitTx() error {
 
 	if e != nil {
 		glog.Warning("CommitTx: Do: EXEC e: ", e.Error())
+		e = tlerr.TranslibTransactionFail { }
 	}
 
 	// Switch State, Clear Command list

@@ -44,7 +44,7 @@ func Process(w http.ResponseWriter, r *http.Request) {
 
 	status, data, err = invokeTranslib(reqID, r.Method, path, body)
 	if err != nil {
-		glog.Errorf("[%s] Translib returned error - %v", reqID, err)
+		glog.Errorf("[%s] Translib error %T - %v", reqID, err, err)
 		status, data, rtype = prepareErrorResponse(err, r)
 		goto write_resp
 	}
@@ -76,7 +76,7 @@ write_resp:
 
 // getRequestBody returns the validated request body
 func getRequestBody(r *http.Request, rc *RequestContext) (*MediaType, []byte, error) {
-	if r.ContentLength < 1 {
+	if r.ContentLength == 0 {
 		glog.Infof("[%s] No body", rc.ID)
 		return nil, nil, nil
 	}
