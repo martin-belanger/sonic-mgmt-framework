@@ -137,7 +137,6 @@ def run(func, args):
             print "%Error: Application Failure"
         else:
             print "Failed"
-        #print("Exception when calling OpenconfigSystemApi->%s : %s\n" %(func.__name__, e))
 
 if __name__ == '__main__':
 
