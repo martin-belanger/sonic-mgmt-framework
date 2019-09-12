@@ -1,0 +1,24 @@
+module sonic-sflow {
+        namespace "http://github.com/Azure/sonic-sflow";
+        prefix sflow;
+
+        revision 2019-09-09 {
+                description
+                        "Initial revision.";
+        }
+
+        container sonic-sflow {
+                list COLLECTOR {
+                    max-elements 3;
+
+                }
+
+                list CONFIG {
+
+                }
+
+                list SESSION {
+
+                }
+        }
+}
