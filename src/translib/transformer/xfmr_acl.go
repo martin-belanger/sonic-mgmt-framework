@@ -35,6 +35,10 @@ func init() {
 	XlateFuncBind("DbToYang_acl_tcp_flags_xfmr", DbToYang_acl_tcp_flags_xfmr)
 	XlateFuncBind("YangToDb_acl_port_bindings_xfmr", YangToDb_acl_port_bindings_xfmr)
 	XlateFuncBind("DbToYang_acl_port_bindings_xfmr", DbToYang_acl_port_bindings_xfmr)
+        XlateFuncBind("YangToDb_acl_forwarding_action_xfmr", YangToDb_acl_forwarding_action_xfmr)
+	XlateFuncBind("DbToYang_acl_forwarding_action_xfmr", DbToYang_acl_forwarding_action_xfmr)
+	XlateFuncBind("validate_ipv4", validate_ipv4)
+	XlateFuncBind("validate_ipv6", validate_ipv6)
 }
 
 const (
@@ -57,6 +61,13 @@ var ACL_TYPE_MAP = map[string]string{
 	strconv.FormatInt(int64(ocbinds.OpenconfigAcl_ACL_TYPE_ACL_IPV4), 10): SONIC_ACL_TYPE_IPV4,
 	strconv.FormatInt(int64(ocbinds.OpenconfigAcl_ACL_TYPE_ACL_IPV6), 10): SONIC_ACL_TYPE_IPV6,
 	strconv.FormatInt(int64(ocbinds.OpenconfigAcl_ACL_TYPE_ACL_L2), 10):   SONIC_ACL_TYPE_L2,
+}
+
+/* E_OpenconfigAcl_FORWARDING_ACTION */
+var ACL_FORWARDING_ACTION_MAP = map[string]string{
+	strconv.FormatInt(int64(ocbinds.OpenconfigAcl_FORWARDING_ACTION_ACCEPT), 10): "FORWARD",
+	strconv.FormatInt(int64(ocbinds.OpenconfigAcl_FORWARDING_ACTION_DROP), 10): "DROP",
+	strconv.FormatInt(int64(ocbinds.OpenconfigAcl_FORWARDING_ACTION_REJECT), 10): "REDIRECT",
 }
 
 /* E_OpenconfigPacketMatchTypes_IP_PROTOCOL */
@@ -167,12 +178,50 @@ func getL2EtherType(etherType uint64) interface{} {
 }
 
 ////////////////////////////////////////////
+// Validate callpoints
+////////////////////////////////////////////
+var validate_ipv4 ValidateCallpoint = func(inParams XfmrParams) (bool) {
+	var res bool = true
+	return res
+}
+var validate_ipv6 ValidateCallpoint = func(inParams XfmrParams) (bool) {
+	var res bool = false
+	return res
+}
+
+////////////////////////////////////////////
 // Bi-directoonal overloaded methods
 ////////////////////////////////////////////
+var YangToDb_acl_forwarding_action_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+	res_map := make(map[string]string)
+	var err error
+	if inParams.param == nil {
+	    res_map["PACKET_ACTION"] = ""
+	    return res_map, err
+	}
+	action, _ := inParams.param.(ocbinds.E_OpenconfigAcl_FORWARDING_ACTION)
+	log.Info("YangToDb_acl_forwarding_action_xfmr: ", inParams.ygRoot, " Xpath: ", inParams.uri, " forwarding_action: ", action)
+	res_map["PACKET_ACTION"] = findInMap(ACL_FORWARDING_ACTION_MAP, strconv.FormatInt(int64(action), 10))
+	return res_map, err
+}
+var DbToYang_acl_forwarding_action_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+	var err error
+	result := make(map[string]interface{})
+	data := (*inParams.dbDataMap)[inParams.curDb]
+	log.Info("DbToYang_acl_forwarding_action_xfmr", data, inParams.ygRoot)
+	oc_action := findInMap(ACL_FORWARDING_ACTION_MAP, data[RULE_TABLE][inParams.key].Field["PACKET_ACTION"])
+	n, err := strconv.ParseInt(oc_action, 10, 64)
+	result["forwarding-action"] = ocbinds.E_OpenconfigAcl_FORWARDING_ACTION(n).ΛMap()["E_OpenconfigAcl_FORWARDING_ACTION"][n].Name
+	return result, err
+}
 
 var YangToDb_acl_type_field_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
 	res_map := make(map[string]string)
 	var err error
+	if inParams.param == nil {
+	    res_map[ACL_TYPE] = ""
+	    return res_map, err
+	}
 
 	acltype, _ := inParams.param.(ocbinds.E_OpenconfigAcl_ACL_TYPE)
 	log.Info("YangToDb_acl_type_field_xfmr: ", inParams.ygRoot, " Xpath: ", inParams.uri, " acltype: ", acltype)
@@ -289,6 +338,10 @@ var YangToDb_acl_l2_ethertype_xfmr FieldXfmrYangToDb = func(inParams XfmrParams)
 	res_map := make(map[string]string)
 	var err error
 
+	if inParams.param == nil {
+	    res_map["ETHER_TYPE"] = ""
+	    return res_map, err
+	}
 	ethertypeType := reflect.TypeOf(inParams.param).Elem()
 	log.Info("YangToDb_acl_ip_protocol_xfmr: ", inParams.ygRoot, " Xpath: ", inParams.uri, " ethertypeType: ", ethertypeType)
 	var b bytes.Buffer
@@ -334,6 +387,10 @@ var YangToDb_acl_ip_protocol_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) 
 	res_map := make(map[string]string)
 	var err error
 
+	if inParams.param == nil {
+	    res_map["IP_PROTOCOL"] = ""
+	    return res_map, err
+	}
 	protocolType := reflect.TypeOf(inParams.param).Elem()
 	log.Info("YangToDb_acl_ip_protocol_xfmr: ", inParams.ygRoot, " Xpath: ", inParams.uri, " protocolType: ", protocolType)
 	switch protocolType {
@@ -364,6 +421,10 @@ var DbToYang_acl_ip_protocol_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) 
 var YangToDb_acl_source_port_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
 	res_map := make(map[string]string)
 	var err error
+	if inParams.param == nil {
+	    res_map["L4_SRC_PORT"] = ""
+	    return res_map, err
+	}
 	sourceportType := reflect.TypeOf(inParams.param).Elem()
 	log.Info("YangToDb_acl_ip_protocol_xfmr: ", inParams.ygRoot, " Xpath: ", inParams.uri, " sourceportType: ", sourceportType)
 	switch sourceportType {
@@ -414,6 +475,10 @@ var DbToYang_acl_source_port_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) 
 var YangToDb_acl_destination_port_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
 	res_map := make(map[string]string)
 	var err error
+	if inParams.param == nil {
+	    res_map["L4_DST_PORT_RANGE"] = ""
+	    return res_map, err
+	}
 	destportType := reflect.TypeOf(inParams.param).Elem()
 	log.Info("YangToDb_acl_ip_protocol_xfmr: ", inParams.ygRoot, " Xpath: ", inParams.uri, " destportType: ", destportType)
 	switch destportType {
@@ -435,9 +500,9 @@ var YangToDb_acl_destination_port_xfmr FieldXfmrYangToDb = func(inParams XfmrPar
 
 var DbToYang_acl_destination_port_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
 	var err error
+	result := make(map[string]interface{})
 	data := (*inParams.dbDataMap)[inParams.curDb]
 	log.Info("DbToYang_acl_destination_port_xfmr: ", data, inParams.ygRoot)
-	result := make(map[string]interface{})
 	if _, ok := data[RULE_TABLE]; !ok {
 		err = errors.New("RULE_TABLE entry not found in the input param")
 		return result, err
@@ -463,8 +528,14 @@ var DbToYang_acl_destination_port_xfmr FieldXfmrDbtoYang = func(inParams XfmrPar
 var YangToDb_acl_tcp_flags_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
 	res_map := make(map[string]string)
 	var err error
-	log.Info("YangToDb_acl_tcp_flags_xfmr: ", inParams.ygRoot, inParams.uri)
+	log.Info("YangToDb_acl_tcp_flags_xfmr: ")
 	var tcpFlags uint32 = 0x00
+	var b bytes.Buffer
+	if inParams.param == nil {
+	    res_map["TCP_FLAGS"] = b.String()
+	    return res_map, err
+	}
+	log.Info("YangToDb_acl_tcp_flags_xfmr: ", inParams.ygRoot, inParams.uri)
 	v := reflect.ValueOf(inParams.param)
 
 	flags := v.Interface().([]ocbinds.E_OpenconfigPacketMatchTypes_TCP_FLAGS)
@@ -497,7 +568,6 @@ var YangToDb_acl_tcp_flags_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (m
 			break
 		}
 	}
-	var b bytes.Buffer
 	fmt.Fprintf(&b, "0x%0.2x/0x%0.2x", tcpFlags, tcpFlags)
 	res_map["TCP_FLAGS"] = b.String()
 	return res_map, err

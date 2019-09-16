@@ -100,9 +100,32 @@ func mapFillData(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, dbKey st
         return errors.New("Invalid field name")
     }
     fieldName := xpathInfo.fieldName
-    valueStr  := fmt.Sprintf("%v", value)
-    if strings.Contains(valueStr, ":") {
-        valueStr = strings.Split(valueStr, ":")[1]
+    valueStr := ""
+    if xpathInfo.yangEntry.IsLeafList() {
+	/* Both yang side and Db side('@' suffix field) the data type is leaf-list */
+	log.Info("Yang type and Db type is Leaflist for field  = ", xpath)
+	fieldName += "@"
+	if reflect.ValueOf(value).Kind() != reflect.Slice {
+	    logStr := fmt.Sprintf("Value for yang xpath %v which is a leaf-list should be a slice", xpath)
+	    log.Error(logStr)
+	    err := errors.New(logStr)
+	    return err
+	}
+	valData := reflect.ValueOf(value)
+	for fidx := 0; fidx < valData.Len(); fidx++ {
+	    if fidx > 0 {
+		valueStr += ","
+	    }
+	    fVal := fmt.Sprintf("%v", valData.Index(fidx).Interface())
+	    valueStr = valueStr + fVal
+	}
+	log.Infof("leaf-list value after conversion to DB format %v  :  %v", fieldName, valueStr)
+
+    } else { // xpath is a leaf
+	valueStr  = fmt.Sprintf("%v", value)
+	if strings.Contains(valueStr, ":") {
+	    valueStr = strings.Split(valueStr, ":")[1]
+	}
     }
 
     dataToDBMapAdd(*xpathInfo.tableName, dbKey, result, fieldName, valueStr)
@@ -180,27 +203,33 @@ func directDbMapData(tableName string, jsonData interface{}, result map[string]m
 
 /* Get the db table, key and field name for the incoming delete request */
 func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, jsonData interface{}, result map[string]map[string]db.Value) error {
-    var err error
-    if isCvlYang(path) {
-        xpathPrefix, keyName, tableName := sonicXpathKeyExtract(path)
-        log.Info("Delete req: path(\"%v\"), key(\"%v\"), xpathPrefix(\"%v\"), tableName(\"%v\").", path, keyName, xpathPrefix, tableName)
-        err = cvlYangReqToDbMapDelete(xpathPrefix, tableName, keyName, result)
-    } else {
-        xpathPrefix, keyName, tableName := xpathKeyExtract(d, ygRoot, oper, path)
-        log.Info("Delete req: path(\"%v\"), key(\"%v\"), xpathPrefix(\"%v\"), tableName(\"%v\").", path, keyName, xpathPrefix, tableName)
-        spec, ok := xSpecMap[xpathPrefix]
-        if ok && spec.tableName != nil {
-            result[*spec.tableName] = make(map[string]db.Value)
-            if len(keyName) > 0 {
-                result[*spec.tableName][keyName] = db.Value{Field: make(map[string]string)}
-                if spec.yangEntry != nil && spec.yangEntry.Node.Statement().Keyword == "leaf" {
-                    result[*spec.tableName][keyName].Field[spec.fieldName] = ""
-                }
-            }
-        }
-    }
-    log.Info("Delete req: path(\"%v\") result(\"%v\").", path, result)
-    return err
+	var err error
+	if isCvlYang(path) {
+		xpathPrefix, keyName, tableName := sonicXpathKeyExtract(path)
+		log.Info("Delete req: path(\"%v\"), key(\"%v\"), xpathPrefix(\"%v\"), tableName(\"%v\").", path, keyName, xpathPrefix, tableName)
+		err = cvlYangReqToDbMapDelete(xpathPrefix, tableName, keyName, result)
+	} else {
+		xpathPrefix, keyName, tableName := xpathKeyExtract(d, ygRoot, oper, path)
+		log.Info("Delete req: path(\"%v\"), key(\"%v\"), xpathPrefix(\"%v\"), tableName(\"%v\").", path, keyName, xpathPrefix, tableName)
+		spec, ok := xSpecMap[xpathPrefix]
+		if ok {
+			if  spec.tableName != nil {
+				result[*spec.tableName] = make(map[string]db.Value)
+				if len(keyName) > 0 {
+					result[*spec.tableName][keyName] = db.Value{Field: make(map[string]string)}
+					if spec.yangEntry != nil && spec.yangEntry.Node.Statement().Keyword == "leaf" {
+						result[*spec.tableName][keyName].Field[spec.fieldName] = ""
+					}
+				}
+			} else if len(spec.childTable) > 0 {
+				for _, child := range spec.childTable {
+					result[child] = make(map[string]db.Value)
+				}
+			}
+		}
+	}
+	log.Info("Delete req: path(\"%v\") result(\"%v\").", path, result)
+	return err
 }
 
 func cvlYangReqToDbMapDelete(xpathPrefix string, tableName string, keyName string, result map[string]map[string]db.Value) error {
@@ -295,19 +324,19 @@ func yangReqToDbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string,
             for _, key := range jData.MapKeys() {
                 typeOfValue := reflect.TypeOf(jData.MapIndex(key).Interface()).Kind()
 
-                if typeOfValue == reflect.Map || typeOfValue == reflect.Slice {
-                    log.Info("slice/map data: key(\"%v\"), xpathPrefix(\"%v\").", keyName, xpathPrefix)
-                    xpath    := uri
-                    curUri   := uri
-                    pathAttr := key.String()
-                    if len(xpathPrefix) > 0 {
-                        if strings.Contains(pathAttr, ":") {
-                            pathAttr = strings.Split(pathAttr, ":")[1]
-                        }
-                        xpath  = xpathPrefix + "/" + pathAttr
-                        curUri = uri + "/" + pathAttr
+                log.Info("slice/map data: key(\"%v\"), xpathPrefix(\"%v\").", keyName, xpathPrefix)
+                xpath    := uri
+                curUri   := uri
+                pathAttr := key.String()
+                if len(xpathPrefix) > 0 {
+                    if strings.Contains(pathAttr, ":") {
+                         pathAttr = strings.Split(pathAttr, ":")[1]
                     }
+                    xpath  = xpathPrefix + "/" + pathAttr
+                    curUri = uri + "/" + pathAttr
+                }
 
+                if (typeOfValue == reflect.Map || typeOfValue == reflect.Slice) && xSpecMap[xpath].yangDataType != "leaf-list" {
                     if xSpecMap[xpath] != nil && len(xSpecMap[xpath].xfmrFunc) > 0 {
                         /* subtree transformer present */
 			inParams := formXfmrInputRequest(d, dbs, db.MaxDB, ygRoot, curUri, oper, "", nil, nil)
