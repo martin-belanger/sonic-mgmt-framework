@@ -57,17 +57,19 @@ module sonic-sflow {
                     }
                 }
 
-                list SFLOW {
-                    leaf admin_state {
-                        type scommon:admin-status;
-                    }
+                container SFLOW {
+                    container global {
+                        leaf admin_state {
+                            type scommon:admin-status;
+                        }
 
-                    leaf polling-interval {
-                        type uint32;
-                    }
+                        leaf polling-interval {
+                            type uint32;
+                        }
 
-                    leaf agent-id {
-                        type string;
+                        leaf agent-id {
+                            type string;
+                        }
                     }
                 }
         }
