@@ -20,7 +20,7 @@ module sonic-sflow {
         }
 
         container sonic-sflow {
-                list COLLECTOR {
+                list SFLOW_COLLECTOR {
                     max-elements 3;
                     key "collector-name";
 
@@ -28,20 +28,20 @@ module sonic-sflow {
                         type string;
                     }
 
-                    leaf ip-address {
+                    leaf collector_ip {
                         type enumeration {
                             enum inet:ipv4-address;
                             enum inet:ipv6-address;
                         }
                     }
 
-                    leaf port {
+                    leaf collector_port {
                         type inet:port-number;
                     }
 
                 }
 
-                list SESSION {
+                list SFLOW_SESSION {
                     key "ifname";
 
                     leaf ifname {
@@ -52,21 +52,23 @@ module sonic-sflow {
                         type scommon:admin-status;
                     }
 
-                    leaf sample-rate {
+                    leaf sample_rate {
                         type uint32;
                     }
                 }
 
-                leaf admin_state {
-                    type scommon:admin-status;
-                }
+                list SFLOW {
+                    leaf admin_state {
+                        type scommon:admin-status;
+                    }
 
-                leaf polling-interval {
-                    type uint32;
-                }
+                    leaf polling-interval {
+                        type uint32;
+                    }
 
-                leaf agent-id {
-                    type string;
+                    leaf agent-id {
+                        type string;
+                    }
                 }
         }
 }
