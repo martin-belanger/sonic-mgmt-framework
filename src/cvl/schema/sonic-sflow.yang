@@ -22,9 +22,9 @@ module sonic-sflow {
         container sonic-sflow {
                 list SFLOW_COLLECTOR {
                     max-elements 3;
-                    key "collector-name";
+                    key "collector_name";
 
-                    leaf collector-name {
+                    leaf collector_name {
                         type string;
                     }
 
@@ -63,11 +63,11 @@ module sonic-sflow {
                             type scommon:admin-status;
                         }
 
-                        leaf polling-interval {
+                        leaf polling_interval {
                             type uint32;
                         }
 
-                        leaf agent-id {
+                        leaf agent_id {
                             type string;
                         }
                     }
