@@ -86,9 +86,17 @@ func validateHandlerFunc(inParams XfmrParams) (bool) {
 func DbValToInt(dbFldVal string, base int, size int, isUint bool) (interface{}, error) {
 	var res interface{}
 	var err error
-	if res, err = strconv.ParseInt(dbFldVal, base, size); err != nil {
+
+        if (isUint) {
+            res, err = strconv.ParseUint(dbFldVal, base, size)
+        } else {
+            res, err = strconv.ParseInt(dbFldVal, base, size)
+        }
+
+	if err != nil {
 		log.Warning("Non Yint%v type for yang leaf-list item %v", size, dbFldVal)
 	}
+
 	return res, err
 }
 
