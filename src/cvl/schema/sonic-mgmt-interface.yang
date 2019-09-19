@@ -1,0 +1,55 @@
+module sonic-mgmt-interface {
+	namespace "http://github.com/Azure/sonic-mgmt-interface";
+	prefix sint;
+
+	import ietf-yang-types {
+		prefix yang;
+	}
+
+	import ietf-inet-types {
+                prefix inet;
+        }
+
+	import sonic-common {
+		prefix scommon;
+	}
+
+	import sonic-port {
+		prefix prt;
+	}
+
+	organization
+		"DELL";
+
+	contact
+		"DELL";
+
+	description
+		"SONIC MANAGEMENT INTERFACE";
+
+	revision 2019-07-02 {
+		description
+			"Initial revision.";
+	}
+
+	container sonic-mgmt-interface {
+		list MGMT_INTERFACE {
+			key "portname ip_prefix";
+
+			leaf portname{
+				type leafref {
+                                        path "/prt:sonic-port/prt:PORT/prt:ifname";
+                                }
+			}
+
+			leaf ip_prefix {
+				 mandatory true;
+                                 type inet:ip-prefix;
+
+			}
+                        leaf gwaddr {
+                            type inet:ip-prefix;
+                        }
+		}
+	}
+}
