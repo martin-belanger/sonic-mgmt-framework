@@ -1,0 +1,22 @@
+{{'-----------------------------------------------------------------------------'}}
+{{'Address'.ljust(20)}}{{'Hardware address'.ljust(20)}}{{'Interface '.ljust(20)}}{{'Egress Interface'}}
+{{'-----------------------------------------------------------------------------'}}
+{%set neigh = json_output['NEIGH_TABLE']%}
+{%set fdb = json_output['FDB_TABLE']%}
+{% for neigh_val in neigh.items() %}
+{%   if neigh_val[1]["value"]["family"] == 'IPv6' %}
+{%   if neigh_val[0].split(':')[0] == 'eth0' %}
+{% set      name = 'Mgmt' %}
+{%   else %}
+{% set     name = neigh_val[0].split(':')[0] %}
+{%   endif %}
+{%     set egress_intf = '-' %}
+{% if 'Vlan' in name %}
+{%   set mac_key = name+':'+neigh_val[1]["value"]["neigh"] %}
+{%   if mac_key in fdb.keys() %}
+{%            set egress_intf = fdb[mac_key]["value"]["port"] %}
+{%   endif %}
+{% endif %}
+{{neigh_val[0].split(':',1)[1].ljust(20)}}{{neigh_val[1]["value"]["neigh"].ljust(20)}}{{name.ljust(20)|lower}}{{egress_intf}}
+{% endif %}
+{% endfor %}

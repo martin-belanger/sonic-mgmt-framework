@@ -39,6 +39,83 @@ limitations under the License.
         >
     <ACTION builtin="clish_nop"/>
     </COMMAND>
+    
+<!--====================show ip arp <ip-addr> commands ======================-->
+    <COMMAND
+        help="show ARP commands"
+        name="show ip arp">
+        <PARAM
+            name="arp-subcommands"
+            help="ARP subcommands"
+            mode="switch"
+            ptype="SUBCOMMAND"
+            optional="true">
+                <PARAM
+                    help="ARP entry for this IP address"
+                    name="ip-addr"
+                    ptype="IP_ADDR"
+                    optional="true">
+                </PARAM>
+        </PARAM>
+       <ACTION>
+           if test "${arp-subcommands}" = "ip-addr"; then&#xA;
+               python $SONIC_CLI_ROOT/sonic-cli-if.py get_openconfig_if_ip_interfaces_interface_subinterfaces_subinterface_ipv4_neighbors arp_show.j2 ip ${ip-addr}&#xA;
+           else&#xA;
+               python $SONIC_CLI_ROOT/sonic-cli-if.py get_openconfig_if_ip_interfaces_interface_subinterfaces_subinterface_ipv4_neighbors arp_show.j2 None None&#xA;
+           fi&#xA;
+       </ACTION>
+    </COMMAND>
+<!--====================show ip arp interface <intf> [summary] ============-->
+    <COMMAND
+        help="ARP entries for this interface"
+        name="show ip arp interface">
+        <PARAM
+            name="Ethernet"
+            help="Ethernet IEEE 802.3"
+            ptype="SUBCOMMAND"
+            mode="subcommand">
+            <PARAM
+                name="phy-if-id"
+                help="Physical interface(Multiples of 4)"
+                ptype="UINT">
+                <PARAM
+                    help="Summary of ARP entries"
+                    name="summary"
+		            ptype="SUBCOMMAND"
+		            mode="subcommand"
+                    optional="true">
+                </PARAM>
+            </PARAM>
+        </PARAM>
+        <ACTION>
+            if test "${summary}" = ""; then&#xA;
+                python $SONIC_CLI_ROOT/sonic-cli-if.py get_openconfig_if_ip_interfaces_interface_subinterfaces_subinterface_ipv4_neighbors arp_show.j2 Ethernet${phy-if-id} None&#xA;
+            else&#xA;
+                python $SONIC_CLI_ROOT/sonic-cli-if.py get_openconfig_if_ip_interfaces_interface_subinterfaces_subinterface_ipv4_neighbors arp_summary_show.j2 Ethernet${phy-if-id} summary&#xA;
+            fi&#xA;
+        </ACTION>
+    </COMMAND>
+<!--- show ip arp [mac-address <mac-addr>]  -->
+    <COMMAND
+        help="HW address"
+        name="show ip arp mac-address">
+        <PARAM
+            help="48 bit MAC address"
+            name="mac-addr"
+            ptype="MAC_ADDR">
+        </PARAM>     
+        <ACTION> 
+            python $SONIC_CLI_ROOT/sonic-cli-if.py get_openconfig_if_ip_interfaces_interface_subinterfaces_subinterface_ipv4_neighbors arp_show.j2 mac ${mac-addr}
+        </ACTION>
+   </COMMAND>
+<!--====================show ip arp summary ============-->
+    <COMMAND
+        help="Summary of ARP entries"
+        name="show ip arp summary">
+        <ACTION> 
+            python $SONIC_CLI_ROOT/sonic-cli-if.py get_openconfig_if_ip_interfaces_interface_subinterfaces_subinterface_ipv4_neighbors arp_summary_show.j2 summary None
+        </ACTION>
+    </COMMAND>
 </VIEW>
 
 <!--=======================================================-->

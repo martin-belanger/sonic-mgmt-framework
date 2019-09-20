@@ -24,6 +24,91 @@ limitations under the License.
     xsi:schemaLocation="http://www.dellemc.com/sonic/XMLSchema
                         http://www.dellemc.com/sonic/XMLSchema/clish.xsd">
 
+<VIEW name="enable-view">
+    <COMMAND
+        help="show IPv6 commands"
+        name="show ipv6"
+        >
+    <ACTION builtin="clish_nop"/>
+    </COMMAND>
+<!--====================show ipv6 neighbors <ip-addr> commands ======================-->
+    <COMMAND
+        help="Display IPv6 neighbor information"
+        name="show ipv6 neighbors">
+        <PARAM
+            name="nbr-subcommands"
+            help="Neighbor subcommands"
+            mode="switch"
+            ptype="SUBCOMMAND"
+            optional="true">
+                <PARAM
+                    help="Show neighbor for a particular IPv6 address"
+                    name="ip-addr"
+                    ptype="IPV6_ADDR"
+                    optional="true">
+                </PARAM>
+        </PARAM>
+       <ACTION>
+           if test "${nbr-subcommands}" = "ip-addr"; then&#xA;
+               python $SONIC_CLI_ROOT/sonic-cli-if.py get_openconfig_if_ip_interfaces_interface_subinterfaces_subinterface_ipv6_neighbors ipv6_nbr_show.j2 ip ${ip-addr}&#xA;
+           else&#xA;
+               python $SONIC_CLI_ROOT/sonic-cli-if.py get_openconfig_if_ip_interfaces_interface_subinterfaces_subinterface_ipv6_neighbors ipv6_nbr_show.j2 None None&#xA;
+           fi&#xA;
+       </ACTION>
+    </COMMAND>
+<!--====================show ipv6 neighbors interface <intf> [summary] ============-->
+    <COMMAND
+        help="Select an interface to configure"
+        name="show ipv6 neighbors interface">
+        <PARAM
+            name="Ethernet"
+            help="Ethernet IEEE 802.3"
+            ptype="SUBCOMMAND"
+            mode="subcommand">
+            <PARAM
+                name="phy-if-id"
+                help="Physical interface(Multiples of 4)"
+                ptype="UINT">
+                <PARAM
+                    help="Summary of IPv6 neighbor entries"
+                    name="summary"
+		            ptype="SUBCOMMAND"
+		            mode="subcommand"
+                    optional="true">
+                </PARAM>
+            </PARAM>
+        </PARAM>
+        <ACTION>
+            if test "${summary}" = ""; then&#xA;
+                python $SONIC_CLI_ROOT/sonic-cli-if.py get_openconfig_if_ip_interfaces_interface_subinterfaces_subinterface_ipv6_neighbors ipv6_nbr_show.j2 Ethernet${phy-if-id} None&#xA;
+            else&#xA;
+                python $SONIC_CLI_ROOT/sonic-cli-if.py get_openconfig_if_ip_interfaces_interface_subinterfaces_subinterface_ipv6_neighbors ipv6_nbr_summary_show.j2 Ethernet${phy-if-id} summary&#xA;
+            fi&#xA;
+        </ACTION>
+    </COMMAND>
+<!--- show ipv6 neighbors [mac-address <mac-addr>]  -->
+    <COMMAND
+        help="HW address"
+        name="show ipv6 neighbors mac-address">
+        <PARAM
+            help="48 bit MAC address"
+            name="mac-addr"
+            ptype="MAC_ADDR">
+        </PARAM>     
+        <ACTION> 
+            python $SONIC_CLI_ROOT/sonic-cli-if.py get_openconfig_if_ip_interfaces_interface_subinterfaces_subinterface_ipv6_neighbors ipv6_nbr_show.j2 mac ${mac-addr}
+        </ACTION>
+   </COMMAND>
+<!--====================show ipv6 neighbors summary ============-->
+    <COMMAND
+        help="Summary of IPv6 neighbor entries"
+        name="show ipv6 neighbors summary">
+        <ACTION> 
+            python $SONIC_CLI_ROOT/sonic-cli-if.py get_openconfig_if_ip_interfaces_interface_subinterfaces_subinterface_ipv6_neighbors ipv6_nbr_summary_show.j2 summary None
+        </ACTION>
+    </COMMAND>
+</VIEW>
+
 <!--=======================================================-->
 <!--                Config Interface PHY-MODE              -->
 <!--=======================================================-->
