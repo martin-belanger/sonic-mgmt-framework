@@ -29,10 +29,7 @@ module sonic-sflow {
                     }
 
                     leaf collector_ip {
-                        type enumeration {
-                            enum inet:ipv4-address;
-                            enum inet:ipv6-address;
-                        }
+                        type inet:ip-address;
                     }
 
                     leaf collector_port {
