@@ -227,6 +227,70 @@ func (app *IntfApp) translateUpdatePhyIntfEthernet(d *db.DB, ifKey *string, intf
 	return err
 }
 
+//Store the input in map
+func (app *IntfApp) translateUpdatePhyIntfEthernetLag(d *db.DB, ifKey *string, intf *ocbinds.OpenconfigInterfaces_Interfaces_Interface) error {
+	var err error
+
+	if intf.Ethernet == nil {
+		return err
+	}
+	if intf.Ethernet.Config == nil {
+		//return err
+                log.Info("intf.Ethernet.Config == nil")
+	}
+	if intf.Ethernet.Config.AggregateId == nil {
+                log.Info("intf.Ethernet.Config == nil")
+		return err
+	}
+/*
+	if !app.validateIpCfgredForInterface(d, ifKey) {
+		errStr := "Interface: " + *ifKey + ", IP address cannot exist with L2 modes"
+		err = tlerr.InvalidArgsError{Format: errStr}
+		return err
+	}
+*/
+	var lagId uint16 = 0
+	//var trunkVlanSlice []string
+	//accessVlanFound := false
+
+	/* Retrieve the Access LAG Id */
+	if intf.Ethernet.Config.AggregateId != nil {
+	    lagId := *intf.Ethernet.Config.AggregateId
+	    log.Info("LAG id : observed for Member port addition configuration!", lagId)
+	}
+/*
+        else {
+            return err;
+        }
+*/
+	/* Update the DS */
+        lagStr := "PortChannel" + strconv.Itoa(int(lagId))
+        err = app.validateLagExists(d, &lagStr)
+        if err != nil {
+                errStr := "Invalid Port channel:" + lagStr
+                err = tlerr.InvalidArgsError{Format: errStr}
+                return err
+        }/*
+        exists, err := app.validateLagCfgredForIface(d, ifKey) //check if alredy part of some lag
+        if err != nil {
+                return err
+        }
+        if exists {
+            errStr := "Interface altready part of Port channel"
+            err = tlerr.InvalidArgsError{Format: errStr}
+            return err
+        }*/
+        memberPortEntryMap := make(map[string]string)
+        memberPortEntry := db.Value{Field: memberPortEntryMap}
+
+        if app.lagD.lagMembersTableMap[lagStr] == nil {
+                app.lagD.lagMembersTableMap[lagStr] = make(map[string]dbEntry)
+        }
+        app.lagD.lagMembersTableMap[lagStr][*ifKey] = dbEntry{entry: memberPortEntry, op: opCreate}
+        log.Info("****Port channel --Port added to cache!")
+	return err //err value should be nil
+}
+
 func (app *IntfApp) translateUpdatePhyIntf(d *db.DB, ifKey *string, inpOp reqType) ([]db.WatchKeys, error) {
 
 	var err error
@@ -405,6 +469,88 @@ func (app *IntfApp) processUpdatePhyIntfVlanAdd(d *db.DB) error {
 		err = d.SetEntry(app.vlanD.vlanTs, db.Key{Comp: []string{vlanName}}, vlanEntry)
 		if err != nil {
 			return errors.New("Updating VLAN table with member ports failed")
+		}
+	}
+	return err
+}
+/* Adding member to LAG requires updation of PORTCHANNEL Table and PORTCHANNEL Member Table */
+func (app *IntfApp) processUpdatePhyIntfLagAdd(d *db.DB) error {
+	log.Info("****processUpdatePhyIntfLagAdd called")
+	var err error
+	//var isMembersListUpdate bool
+
+	/* Updating the PORTCHANNEL MEMBER table */
+
+	for lagName, ifEntries := range app.lagD.lagMembersTableMap {
+	        log.Info("***inside for**lagName**ports =", lagName)
+		var memberPortsListStrB strings.Builder
+		var memberPortsList []string
+		//isMembersListUpdate = false
+		lagEntry, err := d.GetEntry(app.lagD.lagTs, db.Key{Comp: []string{lagName}})
+	        log.Info("***Process update -- Lag entry is", lagEntry)
+                //PortChannel should exist before configuring aggregate-id to Ethernet interface
+		if err != nil {
+		    log.Info("*****No lag entry found in lagTs")
+                    return err
+		}
+/*
+		if !lagEntry.IsPopulated() {
+			errStr := "Failed to retrieve memberPorts info of LAG : " + lagName
+			return errors.New(errStr)
+		}
+*/
+		//memberPortsExists := false
+		memberPortsListStr, ok := lagEntry.Field["members@"]
+		log.Info("*****485 memberPortsListStr***from db****", memberPortsListStr)
+		if ok {
+			if len(memberPortsListStr) != 0 {
+				memberPortsListStrB.WriteString(lagEntry.Field["members@"])
+				memberPortsList = generateMemberPortsSliceFromString(&memberPortsListStr)
+		                log.Info("***** memberPortsList*******",  memberPortsList)
+				//memberPortsExists = true
+			}
+		}
+		for ifName, ifEntry := range ifEntries {
+		        log.Info("*inside for**ProcessUpdate***ifName****", ifName)/*
+			if memberPortsExists {
+				if checkMemberPortExistsInListAndGetMode(d, memberPortsList, &ifName, &lagName, &existingIfMode) {
+				//if checkMemberPortExistsInList(memberPortsList, &ifName) {
+					lagEntry.Field["members@"] = memberPortsListStrB.String()
+					err = d.SetEntry(app.lagD.lagTs, db.Key{Comp: []string{lagName}}, lagEntry)   //<-----------
+					errStr := "Interface: " + ifName + " is already part of Port channel: " + lagName
+					return tlerr.InvalidArgsError{Format: errStr}
+				}
+			}*/
+			//isMembersListUpdate = true
+			switch ifEntry.op {
+			case opCreate: //always new entry created in member table for new iface added
+				err = d.CreateEntry(app.lagD.lagMemberTs, db.Key{Comp: []string{lagName, ifName}}, ifEntry.entry)
+				if err != nil {
+					errStr := "Creating entry for LAG member table with lag : " + lagName + " If : " + ifName + " failed"
+					return errors.New(errStr)
+				}
+			case opUpdate:
+				err = d.SetEntry(app.lagD.lagMemberTs, db.Key{Comp: []string{lagName, ifName}}, ifEntry.entry)
+				if err != nil {
+					errStr := "Set entry for LAG member table with lag : " + lagName + " If : " + ifName + " failed"
+					return errors.New(errStr)
+				}
+			}
+			if len(memberPortsList) == 0 && len(ifEntries) == 1 {
+				memberPortsListStrB.WriteString(ifName)
+			} else {
+				memberPortsListStrB.WriteString("," + ifName)
+			}
+		}
+		log.Info("Member ports =", memberPortsListStrB.String())
+		/*if !isMembersListUpdate {
+			continue
+		}*/
+		lagEntry.Field["members@"] = memberPortsListStrB.String()
+
+		err = d.SetEntry(app.lagD.lagTs, db.Key{Comp: []string{lagName}}, lagEntry)  //<--------
+		if err != nil {
+			return errors.New("Updating LAG table with member ports failed")
 		}
 	}
 	return err

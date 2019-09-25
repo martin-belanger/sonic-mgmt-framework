@@ -58,6 +58,14 @@ type vlanData struct {
 	vlanMembersTableMap map[string]map[string]dbEntry
 }
 
+
+type lagData struct {
+	lagTs       *db.TableSpec
+	lagMemberTs *db.TableSpec
+	lagTblTs    *db.TableSpec
+	lagMembersTableMap map[string]map[string]dbEntry
+}
+
 type intfData struct {
 	portTs             *db.TableSpec
 	portTblTs          *db.TableSpec
@@ -91,6 +99,7 @@ type IntfApp struct {
 
 	intfD intfData
 	vlanD vlanData
+	lagD lagData
 
 	ifTableMap map[string]dbEntry
 }
@@ -136,6 +145,14 @@ func (app *IntfApp) initializeVlan() {
 	app.vlanD.vlanMembersTableMap = make(map[string]map[string]dbEntry)
 }
 
+func (app *IntfApp) initializeLag() {
+	app.lagD.lagTs = &db.TableSpec{Name: "PORTCHANNEL"}
+	app.lagD.lagMemberTs = &db.TableSpec{Name: "PORTCHANNEL_MEMBER"}
+	app.lagD.lagTblTs = &db.TableSpec{Name: "LAG_TABLE"}
+
+	app.lagD.lagMembersTableMap = make(map[string]map[string]dbEntry)
+}
+
 func (app *IntfApp) initialize(data appData) {
 	log.Info("initialize:if:path =", data.path)
 
@@ -148,6 +165,7 @@ func (app *IntfApp) initialize(data appData) {
 
 	app.initializeInterface()
 	app.initializeVlan()
+	app.initializeLag()
 }
 
 func (app *IntfApp) getAppRootObject() *ocbinds.OpenconfigInterfaces_Interfaces {
@@ -195,6 +213,11 @@ func (app *IntfApp) translateUpdate(d *db.DB) ([]db.WatchKeys, error) {
 				}
 			case VLAN:
 				keys, err = app.translateUpdateVlanIntf(d, &ifKey, opUpdate)
+				if err != nil {
+					return keys, err
+				}
+			case LAG:
+				keys, err = app.translateUpdateLagIntf(d, &ifKey, opUpdate)
 				if err != nil {
 					return keys, err
 				}
@@ -324,7 +347,12 @@ func (app *IntfApp) processUpdate(d *db.DB) (SetResponse, error) {
 		if err != nil {
 			return resp, err
 		}
-	}
+	case LAG:
+		err = app.processUpdateLagIntf(d)
+		if err != nil {
+			return resp, err
+		}
+        }
 	return resp, err
 }
 

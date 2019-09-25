@@ -41,7 +41,7 @@ func (app *IntfApp) getIntfTypeFromIntf(ifName *string) error {
 		app.intfType = ETHERNET
 	} else if strings.HasPrefix(*ifName, "Vlan") {
 		app.intfType = VLAN
-	} else if strings.HasPrefix(*ifName, "portchannel") {
+	} else if strings.HasPrefix(*ifName, "  PortChannel") {
 		app.intfType = LAG
 	} else {
 		return errors.New("Fetching Interface type from Interface name failed!")
@@ -166,6 +166,19 @@ func (app *IntfApp) validateVlanExists(d *db.DB, vlanName *string) error {
 	entry, err := d.GetEntry(app.vlanD.vlanTs, db.Key{Comp: []string{*vlanName}})
 	if err != nil || !entry.IsPopulated() {
 		errStr := "Invalid Vlan:" + *vlanName
+		return errors.New(errStr)
+	}
+	return nil
+}
+
+/* Validate whether LAG exists in DB */
+func (app *IntfApp) validateLagExists(d *db.DB, lagName *string) error {
+	if len(*lagName) == 0 {
+		return errors.New("Length of Lag name is zero")
+	}
+	entry, err := d.GetEntry(app.lagD.lagTs, db.Key{Comp: []string{*lagName}})
+	if err != nil || !entry.IsPopulated() {
+		errStr := "Invalid Lag:" + *lagName
 		return errors.New(errStr)
 	}
 	return nil
