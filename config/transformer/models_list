@@ -2,3 +2,5 @@
 
 openconfig-acl.yang
 openconfig-acl-annot.yang
+openconfig-if-ip.yang
+openconfig-if-ip-annot.yang
