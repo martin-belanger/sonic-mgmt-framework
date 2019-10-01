@@ -3,7 +3,6 @@ import sys
 import time
 import json
 import ast
-import sonic_sflow_client
 from collections import OrderedDict
 from scripts.render_cli import show_cli_output
 
@@ -35,7 +34,7 @@ def run(func, args):
         sflow_info = {'sflow' : {'admin_state' : 'enabled', 'polling-interval' : 20, 'agent-id' : 'default'}}
     else:
 	sflow_info = {}
-        sflow_info['sflow'] = {}
+        sflow_info['sflow'] = OrderedDict()
         for i in range(30):
             sflow_info['sflow']['Ethernet'+str(i)] = {'admin_state' : 'enabled', 'sampling_rate' : 4000}
     show_cli_output(sys.argv[2], sflow_info)
