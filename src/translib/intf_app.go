@@ -193,7 +193,6 @@ func (app *IntfApp) translateUpdate(d *db.DB) ([]db.WatchKeys, error) {
 
 	targetUriPath, err := getYangPathFromUri(app.path.Path)
 	log.Info("uripath:=", targetUriPath)
-	log.Info("err:=", err)
 
 	if intfObj.Interface != nil && len(intfObj.Interface) > 0 {
 		log.Info("len:=", len(intfObj.Interface))
@@ -267,6 +266,11 @@ func (app *IntfApp) translateDelete(d *db.DB) ([]db.WatchKeys, error) {
 				}
 			case VLAN:
 				keys, err = app.translateDeleteVlanIntf(d, &ifKey)
+				if err != nil {
+					return keys, err
+				}
+			case LAG:
+				keys, err = app.translateDeleteLagIntf(d, &ifKey)
 				if err != nil {
 					return keys, err
 				}
@@ -377,6 +381,11 @@ func (app *IntfApp) processDelete(d *db.DB) (SetResponse, error) {
 		}
 	case VLAN:
 		err = app.processDeleteVlanIntf(d)
+		if err != nil {
+			return resp, err
+		}
+	case LAG:
+		err = app.processDeleteLagIntf(d)
 		if err != nil {
 			return resp, err
 		}
