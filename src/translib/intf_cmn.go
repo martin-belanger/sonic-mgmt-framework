@@ -48,22 +48,25 @@ const (
 )
 
 func (app *IntfApp) translateUpdateIntfConfig(ifKey *string, intf *ocbinds.OpenconfigInterfaces_Interfaces_Interface, curr *db.Value) {
-	if intf.Config == nil {
-		return
-	}
-	if intf.Config.Description != nil {
-		curr.Field["description"] = *intf.Config.Description
-	} else if intf.Config.Mtu != nil {
-		curr.Field["mtu"] = strconv.Itoa(int(*intf.Config.Mtu))
-	} else if intf.Config.Enabled != nil {
-		if *intf.Config.Enabled == true {
-			curr.Field["admin_status"] = "up"
-		} else {
-			curr.Field["admin_status"] = "down"
-		}
-	}
-	log.Info("Writing to db for ", *ifKey)
-	app.ifTableMap[*ifKey] = dbEntry{op: opUpdate, entry: *curr}
+        /*if intf.Config == nil {
+                return
+        }*/
+        if intf.Config != nil {
+            if intf.Config.Description != nil {
+                    curr.Field["description"] = *intf.Config.Description
+            } else if intf.Config.Mtu != nil {
+                    curr.Field["mtu"] = strconv.Itoa(int(*intf.Config.Mtu))
+            } else if intf.Config.Enabled != nil {
+                    if *intf.Config.Enabled == true {
+                            curr.Field["admin_status"] = "up"
+                    } else {
+                            curr.Field["admin_status"] = "down"
+                    }
+            }
+        }
+
+        log.Info("Writing to db for ", *ifKey)
+        app.ifTableMap[*ifKey] = dbEntry{op: opUpdate, entry: *curr}
 }
 
 func (app *IntfApp) getSpecificIfStateAttr(targetUriPath *string, ifKey *string, oc_val *ocbinds.OpenconfigInterfaces_Interfaces_Interface_State) (bool, error) {

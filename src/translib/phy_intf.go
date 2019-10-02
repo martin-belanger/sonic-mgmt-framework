@@ -229,6 +229,8 @@ func (app *IntfApp) translateUpdatePhyIntfEthernet(d *db.DB, ifKey *string, intf
 
 //Store the input in map
 func (app *IntfApp) translateUpdatePhyIntfEthernetLag(d *db.DB, ifKey *string, intf *ocbinds.OpenconfigInterfaces_Interfaces_Interface) error {
+	log.Info("Inside *******translateUpdatePhyIntfEthernetLag*****")
+
 	var err error
 
 	if intf.Ethernet == nil {
@@ -242,6 +244,7 @@ func (app *IntfApp) translateUpdatePhyIntfEthernetLag(d *db.DB, ifKey *string, i
                 log.Info("intf.Ethernet.Config == nil")
 		return err
 	}
+	log.Info("****intf.Ethernet.Config.AggregateId****is:", *intf.Ethernet.Config.AggregateId)
 /*
 	if !app.validateIpCfgredForInterface(d, ifKey) {
 		errStr := "Interface: " + *ifKey + ", IP address cannot exist with L2 modes"
@@ -249,22 +252,15 @@ func (app *IntfApp) translateUpdatePhyIntfEthernetLag(d *db.DB, ifKey *string, i
 		return err
 	}
 */
-	var lagId uint16 = 0
-	//var trunkVlanSlice []string
-	//accessVlanFound := false
+	var lagId string
 
-	/* Retrieve the Access LAG Id */
+	/* Retrieve the LAG Id */
 	if intf.Ethernet.Config.AggregateId != nil {
-	    lagId := *intf.Ethernet.Config.AggregateId
+	    lagId = *intf.Ethernet.Config.AggregateId
 	    log.Info("LAG id : observed for Member port addition configuration!", lagId)
 	}
-/*
-        else {
-            return err;
-        }
-*/
 	/* Update the DS */
-        lagStr := "PortChannel" + strconv.Itoa(int(lagId))
+        lagStr := "PortChannel" + (lagId)
         err = app.validateLagExists(d, &lagStr)
         if err != nil {
                 errStr := "Invalid Port channel:" + lagStr
@@ -282,13 +278,14 @@ func (app *IntfApp) translateUpdatePhyIntfEthernetLag(d *db.DB, ifKey *string, i
         }*/
         memberPortEntryMap := make(map[string]string)
         memberPortEntry := db.Value{Field: memberPortEntryMap}
+	memberPortEntry.Field["NULL"] = "NULL"
 
         if app.lagD.lagMembersTableMap[lagStr] == nil {
                 app.lagD.lagMembersTableMap[lagStr] = make(map[string]dbEntry)
         }
         app.lagD.lagMembersTableMap[lagStr][*ifKey] = dbEntry{entry: memberPortEntry, op: opCreate}
-        log.Info("****Port channel --Port added to cache!")
-	return err //err value should be nil
+        log.Info("Port channel --Port added to cache!", app.lagD.lagMembersTableMap[lagStr][*ifKey])
+	return err
 }
 
 func (app *IntfApp) translateUpdatePhyIntf(d *db.DB, ifKey *string, inpOp reqType) ([]db.WatchKeys, error) {
@@ -313,8 +310,15 @@ func (app *IntfApp) translateUpdatePhyIntf(d *db.DB, ifKey *string, inpOp reqTyp
 	/* Handling Interface Config updates */
 	app.translateUpdateIntfConfig(ifKey, intf, &curr)
 
-	/* Handling Interface Ethernet updates */
+	/* Handling Interface Ethernet updates specific to VLAN*/
 	err = app.translateUpdatePhyIntfEthernet(d, ifKey, intf)
+	if err != nil {
+		return keys, err
+	}
+
+	/* Handling Interface Ethernet updates specific to LAG*/
+	err = app.translateUpdatePhyIntfEthernetLag(d, ifKey, intf)
+	log.Error("err returned -- , keys returned --", err,keys)
 	if err != nil {
 		return keys, err
 	}
@@ -460,7 +464,7 @@ func (app *IntfApp) processUpdatePhyIntfVlanAdd(d *db.DB) error {
 				memberPortsListStrB.WriteString("," + ifName)
 			}
 		}
-		log.Infof("Member ports = %s", memberPortsListStrB.String())
+		log.Infof("Member ports = %s", memberPortsListStrB.String()) //Member ports =Ethernet16
 		if !isMembersListUpdate {
 			continue
 		}
@@ -473,7 +477,8 @@ func (app *IntfApp) processUpdatePhyIntfVlanAdd(d *db.DB) error {
 	}
 	return err
 }
-/* Adding member to LAG requires updation of PORTCHANNEL Table and PORTCHANNEL Member Table */
+
+/* Adding member to LAG requires adding new entry in PORTCHANNEL_MEMBER Table */
 func (app *IntfApp) processUpdatePhyIntfLagAdd(d *db.DB) error {
 	log.Info("****processUpdatePhyIntfLagAdd called")
 	var err error
@@ -482,15 +487,15 @@ func (app *IntfApp) processUpdatePhyIntfLagAdd(d *db.DB) error {
 	/* Updating the PORTCHANNEL MEMBER table */
 
 	for lagName, ifEntries := range app.lagD.lagMembersTableMap {
-	        log.Info("***inside for**lagName**ports =", lagName)
+	        log.Info("***inside for**lagName**and***ifEntries are --", lagName, ifEntries)
 		var memberPortsListStrB strings.Builder
 		var memberPortsList []string
 		//isMembersListUpdate = false
 		lagEntry, err := d.GetEntry(app.lagD.lagTs, db.Key{Comp: []string{lagName}})
-	        log.Info("***Process update -- Lag entry is", lagEntry)
+	        log.Info("***Process update -- Lag entry is", lagEntry) //{map[min_links:1 fallback:false admin_status:up mtu:9100]}
                 //PortChannel should exist before configuring aggregate-id to Ethernet interface
 		if err != nil {
-		    log.Info("*****No lag entry found in lagTs")
+		    log.Info("*****No lag entry found in lagTs") //already checked in translate func --validateLagexists
                     return err
 		}
 /*
@@ -500,7 +505,7 @@ func (app *IntfApp) processUpdatePhyIntfLagAdd(d *db.DB) error {
 		}
 */
 		//memberPortsExists := false
-		memberPortsListStr, ok := lagEntry.Field["members@"]
+		/*memberPortsListStr, ok := lagEntry.Field["members"]
 		log.Info("*****485 memberPortsListStr***from db****", memberPortsListStr)
 		if ok {
 			if len(memberPortsListStr) != 0 {
@@ -509,9 +514,9 @@ func (app *IntfApp) processUpdatePhyIntfLagAdd(d *db.DB) error {
 		                log.Info("***** memberPortsList*******",  memberPortsList)
 				//memberPortsExists = true
 			}
-		}
+		}*/
 		for ifName, ifEntry := range ifEntries {
-		        log.Info("*inside for**ProcessUpdate***ifName****", ifName)/*
+		        log.Info("*inside for**ProcessUpdate***ifName**ifEntry**", ifName, ifEntry.op, ifEntry.entry)/*
 			if memberPortsExists {
 				if checkMemberPortExistsInListAndGetMode(d, memberPortsList, &ifName, &lagName, &existingIfMode) {
 				//if checkMemberPortExistsInList(memberPortsList, &ifName) {
@@ -523,13 +528,15 @@ func (app *IntfApp) processUpdatePhyIntfLagAdd(d *db.DB) error {
 			}*/
 			//isMembersListUpdate = true
 			switch ifEntry.op {
-			case opCreate: //always new entry created in member table for new iface added
+			case opCreate: //create -- always new entry created in member table for new iface added
+		                log.Info("*inside for**ProcessUpdate***opCreate")
 				err = d.CreateEntry(app.lagD.lagMemberTs, db.Key{Comp: []string{lagName, ifName}}, ifEntry.entry)
 				if err != nil {
 					errStr := "Creating entry for LAG member table with lag : " + lagName + " If : " + ifName + " failed"
 					return errors.New(errStr)
 				}
-			case opUpdate:
+			case opUpdate: //??? operation
+		                log.Info("*inside for**ProcessUpdate***opUpdate")
 				err = d.SetEntry(app.lagD.lagMemberTs, db.Key{Comp: []string{lagName, ifName}}, ifEntry.entry)
 				if err != nil {
 					errStr := "Set entry for LAG member table with lag : " + lagName + " If : " + ifName + " failed"
@@ -542,17 +549,8 @@ func (app *IntfApp) processUpdatePhyIntfLagAdd(d *db.DB) error {
 				memberPortsListStrB.WriteString("," + ifName)
 			}
 		}
-		log.Info("Member ports =", memberPortsListStrB.String())
-		/*if !isMembersListUpdate {
-			continue
-		}*/
-		lagEntry.Field["members@"] = memberPortsListStrB.String()
-
-		err = d.SetEntry(app.lagD.lagTs, db.Key{Comp: []string{lagName}}, lagEntry)  //<--------
-		if err != nil {
-			return errors.New("Updating LAG table with member ports failed")
-		}
 	}
+        log.Info("Success - Entry added in PORTCHANNEL_MEMBER TABLE")
 	return err
 }
 
@@ -603,6 +601,11 @@ func (app *IntfApp) processUpdatePhyIntf(d *db.DB) error {
 	}
 
 	err = app.processUpdatePhyIntfVlanAdd(d)
+	if err != nil {
+		return err
+	}
+
+	err = app.processUpdatePhyIntfLagAdd(d)
 	if err != nil {
 		return err
 	}
@@ -663,9 +666,61 @@ func (app *IntfApp) translateDeletePhyIntfEthernet(d *db.DB, intf *ocbinds.Openc
 	}
 	switchedVlanIntf := intf.Ethernet.SwitchedVlan
 	app.translateDeletePhyIntfEthernetSwitchedVlan(d, switchedVlanIntf, ifName)
-
+        //Note: ******************add code to call translateDeletePhyIntfEthernetLag*******************
 	return err
 }
+
+
+func (app *IntfApp) translateDeletePhyIntfEthernetLag(d *db.DB, intf *ocbinds.OpenconfigInterfaces_Interfaces_Interface, ifName *string) error {
+	var err error
+        //code to remove channel-group from Ethernet interface
+        //delete_openconfig_if_aggregate_interfaces_interface_ethernet_config_aggregate_id
+        log.Info("***Inside translateDeletePhyIntfEthernetLag")
+	if intf.Ethernet == nil {
+		return err
+	}
+	if intf.Ethernet.Config == nil {
+		//return err
+                log.Info("****intf.Ethernet.Config == nil")
+	}
+	if intf.Ethernet.Config.AggregateId != nil {  //---true---
+                log.Info("***intf.Ethernet.Config.AggregateId != nil")
+	}
+        log.Info("****give ifname is****", *ifName)
+        //Find the port-channel the ifname belongs to
+        lagKeys, err := d.GetKeys(app.lagD.lagMemberTs)
+        if err != nil {
+            log.Info("No entries in PORTCHANNEL_MEMBER TABLE")
+            return err
+        }
+        var flag bool = false
+        for i, _ := range lagKeys {
+            if *ifName == lagKeys[i].Get(1) {
+                log.Info("Found lagKey")
+                flag = true
+                lagStr := lagKeys[i].Get(0)
+                log.Info("Given interface part of PortChannel", lagKeys[i].Get(0))
+                curr, _ := d.GetEntry(app.lagD.lagMemberTs, lagKeys[i])
+                //Update data to cache
+                if app.lagD.lagMembersTableMap[lagStr] == nil {
+                        app.lagD.lagMembersTableMap[lagStr] = make(map[string]dbEntry)
+                }
+                //app.lagD.lagMembersTableMap[lagStr][*ifKey] = dbEntry{entry: memberPortEntry, op: opCreate}
+                app.lagD.lagMembersTableMap[lagStr][*ifName] = dbEntry{entry: curr, op: opDelete}
+                //app.ifTableMap[*ifName] = dbEntry{entry: curr, op: opDelete}
+                break
+            }
+        }
+        if (flag == false){
+            log.Info("Given Interface not part of any PortChannel")
+            err = errors.New("Given Interface not part of any PortChannel")
+            return err
+        }
+        log.Info("End of translateDeletePhyIntfEthernetLag")
+	return err
+}
+
+
 
 func (app *IntfApp) translateDeletePhyIntfSubInterfaces(d *db.DB, intf *ocbinds.OpenconfigInterfaces_Interfaces_Interface, ifName *string) error {
 	var err error
@@ -738,6 +793,11 @@ func (app *IntfApp) translateDeletePhyIntf(d *db.DB, ifName *string) ([]db.Watch
 		return keys, err
 	}
 
+	err = app.translateDeletePhyIntfEthernetLag(d, intf, ifName)
+	if err != nil {
+		return keys, err
+	}
+
 	return keys, err
 }
 
@@ -802,6 +862,27 @@ func (app *IntfApp) processDeletePhyIntfVlanRemoval(d *db.DB) error {
 	return err
 }
 
+// Delete entry from PORTCHANNEL_MEMBER TABLE
+func (app *IntfApp) processDeletePhyIntfLagRemoval(d *db.DB) error {
+	var err error
+        //input -- Ethernet interface name
+        //delete specific entry
+        log.Info("In processDeletePhyIntfLagRemoval")
+	for lagName, ifEntries := range app.lagD.lagMembersTableMap {
+	        log.Info("Remving from lagName**and***lagName[0] are --", lagName, lagName[0])
+		for ifName, _ := range ifEntries {
+                    log.Info("ifName is ", ifName)
+                    err = d.DeleteEntry(app.lagD.lagMemberTs, db.Key{Comp: []string{lagName, ifName}})
+                    if err!=nil {
+                        log.Info("Deleting entry failed")
+                        return err
+                    }
+                }
+        }
+        log.Info("Success - Entry deleted")
+	return err
+}
+
 func (app *IntfApp) processDeletePhyIntf(d *db.DB) error {
 	var err error
 
@@ -811,6 +892,11 @@ func (app *IntfApp) processDeletePhyIntf(d *db.DB) error {
 	}
 
 	err = app.processDeletePhyIntfVlanRemoval(d)
+	if err != nil {
+		return err
+	}
+
+	err = app.processDeletePhyIntfLagRemoval(d)
 	if err != nil {
 		return err
 	}
