@@ -365,18 +365,22 @@ limitations under the License.
           </PARAM>
        <ACTION builtin="clish_nop"></ACTION>
        </COMMAND>
-       <COMMAND name="sflow" help="enable sflow">
-            <PARAM name="sampling-rate" help="sFlow sampling rate" ptype="SUBCOMMAND" mode="subcommand" optional="true">
+       <COMMAND name="sflow" help="interface sFlow settings"/>
+            <COMMAND name="sflow sampling-rate" help="Set sampling-rate" ptype="SUBCOMMAND" mode="subcommand">
                 <PARAM name="rate" help="sampling rate" ptype="UINT"/>
-            </PARAM>
-            <PARAM name="admin-status" help="sFlow status for interface" ptype="SUBCOMMAND" mode="subcommand" optional="true">
-            </PARAM>
-            <ACTION builtin="clish_nop"/>
-       </COMMAND>
-       <COMMAND name="no sflow" help="disable sflow">
-            <ACTION builtin="clish_nop"/>
-       </COMMAND>
-
+            	<ACTION builtin="clish_nop"/>
+            </COMMAND>
+            <COMMAND name="sflow enable" help="enable sflow" ptype="SUBCOMMAND" mode="subcommand">
+            	<ACTION builtin="clish_nop"/>
+            </COMMAND>
+       <COMMAND name="no sflow" help="disable sflow"/>
+            <COMMAND name="no sflow sampling-rate" help="set sampling rate to default" ptype="SUBCOMMAND" mode="subcommand">
+                <PARAM name="rate" help="sampling rate" ptype="UINT"/>
+            	<ACTION builtin="clish_nop"/>
+            </COMMAND>
+            <COMMAND name="no sflow enable" help="disable sFlow" ptype="SUBCOMMAND" mode="subcommand">
+            	<ACTION builtin="clish_nop"/>
+            </COMMAND>
        <COMMAND
            name="no switchport"
            help="Remove switchport parameters"
