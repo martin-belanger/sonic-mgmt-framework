@@ -11,48 +11,44 @@ import (
 /******** CONFIG FUNCTIONS ********/
 
 func (app *IntfApp) translateUpdateLagIntf(d *db.DB, lagName *string, inpOp reqType) ([]db.WatchKeys, error) {
-	log.Info("----INSIDE LAG INTF FILE-translate--lagName--", *lagName)
 	var err error
 	var keys []db.WatchKeys
 
 	intfObj := app.getAppRootObject()
-
 	m := make(map[string]string)
 	entryVal := db.Value{Field: m}
 	lag := intfObj.Interface[*lagName]
 	curr, _ := d.GetEntry(app.lagD.lagTs, db.Key{Comp: []string{*lagName}})
+        //Create new LAG entry
 	if !curr.IsPopulated() {
 		log.Info("LAG-" + *lagName + " not present in DB, need to create it!!")
                 entryVal.Field["admin_status"]= "up"
                 entryVal.Field["mtu"]= "9100"
-                entryVal.Field["min_links"]= "0"
+                //entryVal.Field["min_links"]= "0"
                 //entryVal.Field["fallback"]= "false"
 		app.ifTableMap[*lagName] = dbEntry{op: opCreate, entry: entryVal}
 		return keys, nil
 	}
-
-        if lag.Aggregation.Config.MinLinks != nil {
-                log.Info("min-links are:", *lag.Aggregation.Config.MinLinks)
-                curr.Field["min_links"]= strconv.Itoa(int(*lag.Aggregation.Config.MinLinks))
-                log.Info("min-links are:", curr.Field["min_links"])
+        //Lag already exists
+        if (lag.Aggregation) != nil{
+            if (lag.Aggregation.Config) == nil{
+	        return keys, err
+            }
+            if lag.Aggregation.Config.MinLinks != nil {
+                    curr.Field["min_links"]= strconv.Itoa(int(*lag.Aggregation.Config.MinLinks))
+            }
+            if lag.Aggregation.Config.Fallback != nil {
+                    curr.Field["fallback"]=  strconv.FormatBool(*lag.Aggregation.Config.Fallback)
+            }
         }
-        /*code for fallback
-        if lag.Aggregation.Config.Fallback != nil {
-                log.Info("fallback mode:", *lag.Aggregation.Config.)
-                curr.Field["min_links"]=  *lag.Aggregation.Config.Fallback
-                log.Info("min-links are:", curr.Field["min_links"])
-        }
-        */
 	app.translateUpdateIntfConfig(lagName, lag, &curr)
 	return keys, err
 }
 
 func (app *IntfApp) processUpdateLagIntfConfig(d *db.DB) error {
-	log.Info("INSIDE LAG INTF FILE--processUPDATE---")
 	var err error
 
 	for lagName, lagEntry := range app.ifTableMap {
-	log.Info("--->lagName and lagentry are", lagName, lagEntry) //Portchannel10{1 {map[admin_status:up mtu:9100]}}
 		switch lagEntry.op {
 		case opCreate:
 			err = d.CreateEntry(app.lagD.lagTs, db.Key{Comp: []string{lagName}}, lagEntry.entry)
@@ -83,7 +79,6 @@ func (app *IntfApp) processUpdateLagIntf(d *db.DB) error {
 
 /********* DELETE FUNCTIONS ********/
 func (app *IntfApp) translateDeleteLagIntf(d *db.DB, lagName *string) ([]db.WatchKeys, error) {
-        log.Info("**inside translateDeleteLagIntf")
 	var err error
 	var keys []db.WatchKeys
 	curr, err := d.GetEntry(app.lagD.lagTs, db.Key{Comp: []string{*lagName}})
@@ -98,10 +93,8 @@ func (app *IntfApp) translateDeleteLagIntf(d *db.DB, lagName *string) ([]db.Watc
 // Delete will require updating both PORTCHANNEL and PORTCHANNEL_MEMBER TABLE
 func (app *IntfApp) processDeleteLagIntfAndMembers(d *db.DB) error {
 	var err error
-        log.Info("**inside processDeleteLagIntfAndMember")
 
 	for lagKey, _ := range app.ifTableMap {
-            log.Info("**lagKey is", lagKey)
             lagKeys, err := d.GetKeys(app.lagD.lagMemberTs)
             if err == nil {
                 log.Info("PortChannels have members")
@@ -111,7 +104,6 @@ func (app *IntfApp) processDeleteLagIntfAndMembers(d *db.DB) error {
                     if lagKey == lagKeys[i].Get(0) {
                         log.Info("Found lagKey")
                         log.Info("Removing memner", lagKeys[i].Get(1))
-		        //log.Info("Member Port:%s part of lag:%s to be deleted!", lagKeys[i].Get(1), lagKey)
                         //delete the entry
                         err = d.DeleteEntry(app.lagD.lagMemberTs, lagKeys[i])
                         if err != nil {
@@ -122,7 +114,7 @@ func (app *IntfApp) processDeleteLagIntfAndMembers(d *db.DB) error {
                 }
             }
             //Delete entry in PORTCHANNEL TABLE
-            err = d.DeleteEntry(app.lagD.lagTs, db.Key{Comp: []string{lagKey}}) // at top first validate lag exists
+            err = d.DeleteEntry(app.lagD.lagTs, db.Key{Comp: []string{lagKey}})
             if err != nil {
                     return err
             }
