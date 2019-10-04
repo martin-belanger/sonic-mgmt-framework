@@ -5,12 +5,13 @@ import (
 	log "github.com/golang/glog"
 	"translib/db"
 	"translib/tlerr"
+        "strconv"
 )
 
 /******** CONFIG FUNCTIONS ********/
 
 func (app *IntfApp) translateUpdateLagIntf(d *db.DB, lagName *string, inpOp reqType) ([]db.WatchKeys, error) {
-	log.Info("----INSIDE LAG INTF FILE-translate----")
+	log.Info("----INSIDE LAG INTF FILE-translate--lagName--", *lagName)
 	var err error
 	var keys []db.WatchKeys
 
@@ -18,22 +19,30 @@ func (app *IntfApp) translateUpdateLagIntf(d *db.DB, lagName *string, inpOp reqT
 
 	m := make(map[string]string)
 	entryVal := db.Value{Field: m}
-	entryVal.Field["admin_status"]= "up"
-	entryVal.Field["mtu"]= "9100"
-	entryVal.Field["min_links"]= "0"
-	entryVal.Field["fallback"]= "false"
-	if err != nil {
-		return keys, err
-	}
-
 	lag := intfObj.Interface[*lagName]
 	curr, _ := d.GetEntry(app.lagD.lagTs, db.Key{Comp: []string{*lagName}})
 	if !curr.IsPopulated() {
 		log.Info("LAG-" + *lagName + " not present in DB, need to create it!!")
+                entryVal.Field["admin_status"]= "up"
+                entryVal.Field["mtu"]= "9100"
+                entryVal.Field["min_links"]= "0"
+                //entryVal.Field["fallback"]= "false"
 		app.ifTableMap[*lagName] = dbEntry{op: opCreate, entry: entryVal}
 		return keys, nil
 	}
-	log.Info("----> LAGkeys are ", keys)
+
+        if lag.Aggregation.Config.MinLinks != nil {
+                log.Info("min-links are:", *lag.Aggregation.Config.MinLinks)
+                curr.Field["min_links"]= strconv.Itoa(int(*lag.Aggregation.Config.MinLinks))
+                log.Info("min-links are:", curr.Field["min_links"])
+        }
+        /*code for fallback
+        if lag.Aggregation.Config.Fallback != nil {
+                log.Info("fallback mode:", *lag.Aggregation.Config.)
+                curr.Field["min_links"]=  *lag.Aggregation.Config.Fallback
+                log.Info("min-links are:", curr.Field["min_links"])
+        }
+        */
 	app.translateUpdateIntfConfig(lagName, lag, &curr)
 	return keys, err
 }
