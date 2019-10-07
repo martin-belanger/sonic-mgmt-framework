@@ -69,6 +69,121 @@ func (app *IntfApp) translateUpdateIntfConfig(ifKey *string, intf *ocbinds.Openc
         app.ifTableMap[*ifKey] = dbEntry{op: opUpdate, entry: *curr}
 }
 
+/* Handling IP address updates for given interface */
+func (app *IntfApp) translateUpdateIntfSubInterfaces(d *db.DB, ifKey *string, intf *ocbinds.OpenconfigInterfaces_Interfaces_Interface) error {
+	var err error
+	if intf.Subinterfaces == nil {
+		return err
+	}
+	subIf := intf.Subinterfaces.Subinterface[0]
+	if subIf != nil {
+		if subIf.Ipv4 != nil && subIf.Ipv4.Addresses != nil {
+			for ip, _ := range subIf.Ipv4.Addresses.Address {
+				addr := subIf.Ipv4.Addresses.Address[ip]
+				if addr.Config != nil {
+					log.Info("Ip:=", *addr.Config.Ip)
+					log.Info("prefix:=", *addr.Config.PrefixLength)
+					if !validIPv4(*addr.Config.Ip) {
+						errStr := "Invalid IPv4 address " + *addr.Config.Ip
+						err = tlerr.InvalidArgsError{Format: errStr}
+						return err
+					}
+					err = app.translateIpv4(d, *ifKey, *addr.Config.Ip, int(*addr.Config.PrefixLength))
+					if err != nil {
+						return err
+					}
+				}
+			}
+		}
+		if subIf.Ipv6 != nil && subIf.Ipv6.Addresses != nil {
+			for ip, _ := range subIf.Ipv6.Addresses.Address {
+				addr := subIf.Ipv6.Addresses.Address[ip]
+				if addr.Config != nil {
+					log.Info("Ip:=", *addr.Config.Ip)
+					log.Info("prefix:=", *addr.Config.PrefixLength)
+					if !validIPv6(*addr.Config.Ip) {
+						errStr := "Invalid IPv6 address " + *addr.Config.Ip
+						err = tlerr.InvalidArgsError{Format: errStr}
+						return err
+					}
+					err = app.translateIpv4(d, *ifKey, *addr.Config.Ip, int(*addr.Config.PrefixLength))
+					if err != nil {
+						return err
+					}
+				}
+			}
+		}
+	} else {
+		err = errors.New("Only subinterface index 0 is supported")
+		return err
+	}
+	return err
+}
+
+func (app *IntfApp) translateDeleteIntfSubInterfaces(d *db.DB, intf *ocbinds.OpenconfigInterfaces_Interfaces_Interface, ifName *string) error {
+        log.Info("Inside translateDeleteIntfSubInterfaces")
+	var err error
+	if intf.Subinterfaces == nil {
+		return err
+	}
+        err = app.getIntfTypeFromIntf(ifName)
+        if err != nil {
+                return err
+        }
+        /* Find the type of Interface*/
+        ts := app.intfD.intfIPTs
+        if app.intfType == LAG {
+            ts = app.lagD.lagIPTs
+        }
+	subIf := intf.Subinterfaces.Subinterface[0]
+	if subIf != nil {
+		if subIf.Ipv4 != nil && subIf.Ipv4.Addresses != nil {
+			for ip, _ := range subIf.Ipv4.Addresses.Address {
+				addr := subIf.Ipv4.Addresses.Address[ip]
+				if addr != nil {
+					ipAddr := addr.Ip
+					log.Info("IPv4 address = ", *ipAddr)
+					if !validIPv4(*ipAddr) {
+						errStr := "Invalid IPv4 address " + *ipAddr
+						ipValidErr := tlerr.InvalidArgsError{Format: errStr}
+						return ipValidErr
+					}
+					err = app.validateIp(d, *ifName, *ipAddr, ts)
+					if err != nil {
+						errStr := "Invalid IPv4 address " + *ipAddr
+						ipValidErr := tlerr.InvalidArgsError{Format: errStr}
+						return ipValidErr
+					}
+				}
+			}
+		}
+		if subIf.Ipv6 != nil && subIf.Ipv6.Addresses != nil {
+			for ip, _ := range subIf.Ipv6.Addresses.Address {
+				addr := subIf.Ipv6.Addresses.Address[ip]
+				if addr != nil {
+					ipAddr := addr.Ip
+					log.Info("IPv6 address = ", *ipAddr)
+					if !validIPv6(*ipAddr) {
+						errStr := "Invalid IPv6 address " + *ipAddr
+						ipValidErr := tlerr.InvalidArgsError{Format: errStr}
+						return ipValidErr
+					}
+					err = app.validateIp(d, *ifName, *ipAddr,ts)
+					if err != nil {
+						errStr := "Invalid IPv6 address:" + *ipAddr
+						ipValidErr := tlerr.InvalidArgsError{Format: errStr}
+						return ipValidErr
+					}
+				}
+			}
+		}
+	} else {
+		err = errors.New("Only subinterface index 0 is supported")
+		return err
+	}
+	return err
+}
+
 func (app *IntfApp) getSpecificIfStateAttr(targetUriPath *string, ifKey *string, oc_val *ocbinds.OpenconfigInterfaces_Interfaces_Interface_State) (bool, error) {
 	switch *targetUriPath {
 	case "/openconfig-interfaces:interfaces/interface/state/oper-status":
@@ -520,11 +635,11 @@ func (app *IntfApp) convertDBIntfIPInfoToInternal(dbCl *db.DB, ts *db.TableSpec,
 			log.Errorf("Error found on fetching Interface IP info from App DB for Interface Name : %s", *ifName)
 			return err
 		}
-		if len(app.intfD.ifIPTableMap[key.Get(0)]) == 0 {
-			app.intfD.ifIPTableMap[key.Get(0)] = make(map[string]dbEntry)
-			app.intfD.ifIPTableMap[key.Get(0)][key.Get(1)] = dbEntry{entry: ipInfo}
+		if len(app.ifIPTableMap[key.Get(0)]) == 0 {
+			app.ifIPTableMap[key.Get(0)] = make(map[string]dbEntry)
+			app.ifIPTableMap[key.Get(0)][key.Get(1)] = dbEntry{entry: ipInfo}
 		} else {
-			app.intfD.ifIPTableMap[key.Get(0)][key.Get(1)] = dbEntry{entry: ipInfo}
+			app.ifIPTableMap[key.Get(0)][key.Get(1)] = dbEntry{entry: ipInfo}
 		}
 	}
 	return err
@@ -563,6 +678,16 @@ func (app *IntfApp) processGetConvertDBVlanIfInfoToDS(vlanName *string) error {
 	var err error
 
 	err = app.convertDBIntfInfoToInternal(app.appDB, app.vlanD.vlanTblTs, vlanName, db.Key{Comp: []string{*vlanName}})
+	if err != nil {
+		return err
+	}
+	return err
+}
+
+func (app *IntfApp) processGetConvertDBLagIfInfoToDS(lagName *string) error {
+	var err error
+
+	err = app.convertDBIntfInfoToInternal(app.appDB, app.lagD.lagTblTs, lagName, db.Key{Comp: []string{*lagName}})
 	if err != nil {
 		return err
 	}
@@ -712,7 +837,7 @@ func (app *IntfApp) convertInternalToOCIntfIPAttrInfo(ifName *string, ifInfo *oc
 		return
 	}
 	ygot.BuildEmptyTree(subIntf)
-	if ipMap, ok := app.intfD.ifIPTableMap[*ifName]; ok {
+	if ipMap, ok := app.ifIPTableMap[*ifName]; ok {
 		for ipKey, _ := range ipMap {
 			log.Info("IP address = ", ipKey)
 			ipB, ipNetB, _ := net.ParseCIDR(ipKey)
@@ -911,6 +1036,11 @@ func (app *IntfApp) processGetSpecificIntf(dbs [db.MaxDB]*db.DB, targetUriPath *
 				}
 			case VLAN:
 				err = app.processGetConvertDBVlanIfInfoToDS(&ifKey)
+				if err != nil {
+					return GetResponse{Payload: payload, ErrSrc: AppErr}, err
+				}
+			case LAG:
+				err = app.processGetConvertDBLagIfInfoToDS(&ifKey)
 				if err != nil {
 					return GetResponse{Payload: payload, ErrSrc: AppErr}, err
 				}

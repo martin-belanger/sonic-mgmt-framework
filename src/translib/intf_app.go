@@ -63,6 +63,7 @@ type lagData struct {
 	lagTs       *db.TableSpec
 	lagMemberTs *db.TableSpec
 	lagTblTs    *db.TableSpec
+	lagIPTs     *db.TableSpec
 	lagMembersTableMap map[string]map[string]dbEntry
 }
 
@@ -78,7 +79,6 @@ type intfData struct {
 	intfIPTblTs     *db.TableSpec
 	intfCountrTblTs *db.TableSpec
 
-	ifIPTableMap   map[string]map[string]dbEntry
 	ifVlanInfoList []*ifVlan
 }
 
@@ -102,6 +102,7 @@ type IntfApp struct {
 	lagD lagData
 
 	ifTableMap map[string]dbEntry
+	ifIPTableMap   map[string]map[string]dbEntry
 }
 
 func init() {
@@ -133,7 +134,6 @@ func (app *IntfApp) initializeInterface() {
 	app.intfD.intfIPTblTs = &db.TableSpec{Name: "INTF_TABLE", CompCt: 2}
 	app.intfD.intfCountrTblTs = &db.TableSpec{Name: "COUNTERS"}
 
-	app.intfD.ifIPTableMap = make(map[string]map[string]dbEntry)
 }
 
 func (app *IntfApp) initializeVlan() {
@@ -148,6 +148,7 @@ func (app *IntfApp) initializeVlan() {
 func (app *IntfApp) initializeLag() {
 	app.lagD.lagTs = &db.TableSpec{Name: "PORTCHANNEL"}
 	app.lagD.lagMemberTs = &db.TableSpec{Name: "PORTCHANNEL_MEMBER"}
+	app.lagD.lagIPTs = &db.TableSpec{Name: "PORTCHANNEL_INTERFACE"}
 	app.lagD.lagTblTs = &db.TableSpec{Name: "LAG_TABLE"}
 
 	app.lagD.lagMembersTableMap = make(map[string]map[string]dbEntry)
@@ -162,6 +163,7 @@ func (app *IntfApp) initialize(data appData) {
 	app.ygotTarget = data.ygotTarget
 
 	app.ifTableMap = make(map[string]dbEntry)
+	app.ifIPTableMap = make(map[string]map[string]dbEntry)
 
 	app.initializeInterface()
 	app.initializeVlan()

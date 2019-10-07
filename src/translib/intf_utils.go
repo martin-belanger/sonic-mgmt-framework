@@ -50,8 +50,8 @@ func (app *IntfApp) getIntfTypeFromIntf(ifName *string) error {
 }
 
 /* Validates whether the specific IP exists in the DB for an Interface*/
-func (app *IntfApp) validateIp(dbCl *db.DB, ifName string, ip string) error {
-	app.allIpKeys, _ = app.doGetAllIpKeys(dbCl, app.intfD.intfIPTs)
+func (app *IntfApp) validateIp(dbCl *db.DB, ifName string, ip string, ts *db.TableSpec) error {
+	app.allIpKeys, _ = app.doGetAllIpKeys(dbCl, ts)
 
 	for _, key := range app.allIpKeys {
 		if len(key.Comp) < 2 {
@@ -64,16 +64,16 @@ func (app *IntfApp) validateIp(dbCl *db.DB, ifName string, ip string) error {
 		ipStr := ipAddr.String()
 		if ipStr == ip {
 			log.Infof("IP address %s exists, updating the DS for deletion!", ipStr)
-			ipInfo, err := dbCl.GetEntry(app.intfD.intfIPTs, key)
+			ipInfo, err := dbCl.GetEntry(ts, key)
 			if err != nil {
 				log.Error("Error found on fetching Interface IP info from App DB for Interface Name : ", ifName)
 				return err
 			}
-			if len(app.intfD.ifIPTableMap[key.Get(0)]) == 0 {
-				app.intfD.ifIPTableMap[key.Get(0)] = make(map[string]dbEntry)
-				app.intfD.ifIPTableMap[key.Get(0)][key.Get(1)] = dbEntry{entry: ipInfo}
+			if len(app.ifIPTableMap[key.Get(0)]) == 0 {
+				app.ifIPTableMap[key.Get(0)] = make(map[string]dbEntry)
+				app.ifIPTableMap[key.Get(0)][key.Get(1)] = dbEntry{entry: ipInfo}
 			} else {
-				app.intfD.ifIPTableMap[key.Get(0)][key.Get(1)] = dbEntry{entry: ipInfo}
+				app.ifIPTableMap[key.Get(0)][key.Get(1)] = dbEntry{entry: ipInfo}
 			}
 			return nil
 		}
@@ -97,7 +97,7 @@ func (app *IntfApp) validateIpCfgredForInterface(dbCl *db.DB, ifName *string) bo
 }
 
 /* Check for IP overlap */
-func (app *IntfApp) translateIpv4(d *db.DB, intf string, ip string, prefix int) error {
+func (app *IntfApp) translateIpv4(d *db.DB, intf string, ip string, prefix int, ) error {
 	var err error
 	var ifsKey db.Key
 
@@ -133,10 +133,10 @@ func (app *IntfApp) translateIpv4(d *db.DB, intf string, ip string, prefix int) 
 				entry.op = opDelete
 
 				log.Info("Entry ", key.Get(1), " on ", intf, " needs to be deleted")
-				if app.intfD.ifIPTableMap[intf] == nil {
-					app.intfD.ifIPTableMap[intf] = make(map[string]dbEntry)
+				if app.ifIPTableMap[intf] == nil {
+					app.ifIPTableMap[intf] = make(map[string]dbEntry)
 				}
-				app.intfD.ifIPTableMap[intf][key.Get(1)] = entry
+				app.ifIPTableMap[intf][key.Get(1)] = entry
 			}
 		}
 	}
@@ -150,10 +150,10 @@ func (app *IntfApp) translateIpv4(d *db.DB, intf string, ip string, prefix int) 
 		m["NULL"] = "NULL"
 		value := db.Value{Field: m}
 		entry.entry = value
-		if app.intfD.ifIPTableMap[intf] == nil {
-			app.intfD.ifIPTableMap[intf] = make(map[string]dbEntry)
+		if app.ifIPTableMap[intf] == nil {
+			app.ifIPTableMap[intf] = make(map[string]dbEntry)
 		}
-		app.intfD.ifIPTableMap[intf][ipPref] = entry
+		app.ifIPTableMap[intf][ipPref] = entry
 	}
 	return err
 }
@@ -275,6 +275,7 @@ func validIPv4(ipAddress string) bool {
 
 	re, _ := regexp.Compile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$`)
 	if re.MatchString(ipAddress) {
+                log.Info("Given IP address is valid")
 		return true
 	}
 	return false

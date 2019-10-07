@@ -242,9 +242,9 @@ limitations under the License.
                 />
              </PARAM>
          </PARAM>
-     <ACTION builtin="clish_nop">
+     <ACTION>
         if test "${if-subcommands}" = "PortChannel"; then&#xA;
-              python $SONIC_CLI_ROOT/sonic-cli-if.py delete_openconfig_interfaces_interfaces_interface Portchannel${lag-id}&#xA;
+              python $SONIC_CLI_ROOT/sonic-cli-if.py delete_openconfig_interfaces_interfaces_interface PortChannel${lag-id}&#xA;
         fi
      </ACTION>
      </COMMAND>
@@ -586,12 +586,12 @@ limitations under the License.
             ptype="SUBCOMMAND"
             mode="subcommand"
             /> <!-- lacp fallback enable -->
-        <ACTION> python $SONIC_CLI_ROOT/sonic-cli-if.py patch_openconfig_if_aggregate_interfaces_interface_aggregation_config_fallback ${po_id} True </ACTION>
+        <ACTION> python $SONIC_CLI_ROOT/sonic-cli-if.py patch_dell_intf_augments_interfaces_interface_aggregation_config_fallback ${po_id} True </ACTION>
   </COMMAND>
     <COMMAND
         name="no fallback"
         help="Disable fallback">
-        <ACTION> python $SONIC_CLI_ROOT/sonic-cli-if.py patch_openconfig_if_aggregate_interfaces_interface_aggregation_config_fallback ${po_id} False </ACTION>
+        <ACTION> python $SONIC_CLI_ROOT/sonic-cli-if.py patch_dell_intf_augments_interfaces_interface_aggregation_config_fallback ${po_id} False </ACTION>
     </COMMAND>
     </VIEW> <!-- End of Configure View for PortChannel-->
 

@@ -133,9 +133,12 @@ def generate_body(func, args):
         body = { "openconfig-if-aggregate:min-links": args[1] }
 
     # Config fallback mode for port-channel
-    elif func.__name__ == 'patch_openconfig_if_aggregate_interfaces_interface_aggregation_config_fallback':
+    elif func.__name__ == 'patch_dell_intf_augments_interfaces_interface_aggregation_config_fallback':
         keypath = [ args[0] ]
-        body = { "dell-intf-augments:fallback": args[1] }
+        if args[1] == "True":
+            body = { "dell-intf-augments:fallback": True }
+        else :
+            body = { "dell-intf-augments:fallback": False }
     else:
        body = {}
 
