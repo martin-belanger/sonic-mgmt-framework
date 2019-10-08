@@ -36,6 +36,13 @@ module sonic-common {
 		}
 	}
 
+    typedef oper-status {
+		type enumeration {
+			enum up;
+			enum down;
+		}
+	}
+
 	extension custom-handler {
 		description
 			"Node should be handled by custom handler";

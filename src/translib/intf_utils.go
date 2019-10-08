@@ -256,7 +256,7 @@ func convertTaggingModeToInterfaceModeType(tagMode *string, ifMode *intfModeType
 func checkMemberPortExistsInListAndGetMode(d *db.DB, memberPortsList []string, memberPort *string, vlanName *string, ifMode *intfModeType) bool {
 	for _, port := range memberPortsList {
 		if *memberPort == port {
-			tagModeEntry, err := d.GetEntry(&db.TableSpec{Name:"VLAN_MEMBER"}, db.Key{Comp: []string{*vlanName, *memberPort}})
+			tagModeEntry, err := d.GetEntry(&db.TableSpec{Name: "VLAN_MEMBER"}, db.Key{Comp: []string{*vlanName, *memberPort}})
 			if err != nil {
 				return false
 			}
@@ -267,7 +267,6 @@ func checkMemberPortExistsInListAndGetMode(d *db.DB, memberPortsList []string, m
 	}
 	return false
 }
-
 
 /* Validate IPv4 address */
 func validIPv4(ipAddress string) bool {
@@ -338,12 +337,13 @@ func (app *IntfApp) removeUntaggedVlanAndUpdateVlanMembTbl(d *db.DB, ifName *str
 			errStr := "tagging_mode entry is not present for VLAN: " + vlanMember.Get(0) + " Interface: " + *ifName
 			return nil, errors.New(errStr)
 		}
+
+		vlanName := vlanMember.Get(0)
 		if tagMode == "untagged" {
 			err = d.DeleteEntry(app.vlanD.vlanMemberTs, db.Key{Comp: []string{vlanMember.Get(0), *ifName}})
 			if err != nil {
 				return nil, err
 			}
-			vlanName := vlanMember.Get(0)
 			return &vlanName, nil
 		}
 	}
@@ -364,14 +364,18 @@ func (app *IntfApp) removeTaggedVlanAndUpdateVlanMembTbl(d *db.DB, trunkVlan *st
 		errStr := "tagging_mode entry is not present for VLAN: " + *trunkVlan + " Interface: " + *ifName
 		return errors.New(errStr)
 	}
+	vlanName := *trunkVlan
 	if tagMode == "tagged" {
 		err = d.DeleteEntry(app.vlanD.vlanMemberTs, db.Key{Comp: []string{*trunkVlan, *ifName}})
 		if err != nil {
 			return err
 		}
+	} else {
+		vlanId := vlanName[len("Vlan"):len(vlanName)]
+		errStr := "Tagged VLAN: " + vlanId + " configuration doesn't exist for Interface: " + *ifName
+		return tlerr.InvalidArgsError{Format: errStr}
 	}
-	errStr := "Tagged Vlan Configuration doesn't exist for Interface: " + *ifName
-	return tlerr.InvalidArgsError{Format: errStr}
+	return err
 }
 
 /* Validate whether Port has any Untagged VLAN Config existing */
