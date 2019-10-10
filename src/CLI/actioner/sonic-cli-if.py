@@ -162,45 +162,6 @@ def run(func, args):
     c.verify_ssl = False
     aa = openconfig_interfaces_client.OpenconfigInterfacesApi(api_client=openconfig_interfaces_client.ApiClient(configuration=c))
 
-    #show port-channels summary
-    if "PortChannel" in args[0] and func.__name__ == 'get_openconfig_interfaces_interfaces':
-
-        dummy_resp= {
-            "PORTCHANNEL": [
-                {
-                    "members": [
-                        "Ethernet56",
-                        "Ethernet60"
-                    ],
-                    "min-links": 2,
-                    "mtu": 9100,
-                    "admin_status": "up",
-                    "oper_status": "down",
-                    "name": "PortChannel1",
-                    "id": "1"
-                },
-                {
-                    "members": [],
-                    "min-links": 1,
-                    "mtu": 9100,
-                    "admin_status": "up",
-                    "oper_status": "down",
-                    "name": "PortChannel12",
-                    "id": "12"
-                },
-                {
-                    "members": [],
-                    "min-links": 1,
-                    "mtu": 9100, 
-                    "admin_status": "up",
-                    "oper_status": "down",
-                    "name": "PortChannel3",
-                    "id": "3"
-                }
-            ]
-        }
-        show_cli_output(args[1], dummy_resp)
-        return
 
 
     # create a body block
@@ -217,6 +178,8 @@ def run(func, args):
         else:
             # Get Command Output
             api_response = aa.api_client.sanitize_for_serialization(api_response)
+            print (api_response)
+
             if 'openconfig-interfaces:interfaces' in api_response:
                 value = api_response['openconfig-interfaces:interfaces']
                 if 'interface' in value:

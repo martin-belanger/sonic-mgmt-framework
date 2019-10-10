@@ -74,4 +74,50 @@ module sonic-portchannel {
             }
         }
     }
+
+    container sonic-portchannel-state {
+        list LAG_TABLE {
+            key "lagname";
+
+            leaf lagname {
+                type string;
+            }
+
+            leaf admin_status {
+                type scommon:admin-status;
+            }
+
+            leaf mtu {
+                type uint16;
+            }
+
+            leaf active {
+                type boolean;
+            }
+
+            leaf name {
+                type string;
+            }
+
+            leaf oper_status {
+                type scommon:oper-status;
+            }
+        }
+
+        list LAG_MEMBER_TABLE {
+            key "name ifname";
+
+            leaf name {
+                type leafref {
+                    path "../../LAG_TABLE/name";
+                }
+            }
+
+            leaf ifname {
+                type leafref {
+                    path "/prt:sonic-port/prt:PORT/prt:ifname";
+                }
+            }
+        }  
+    }
 }
