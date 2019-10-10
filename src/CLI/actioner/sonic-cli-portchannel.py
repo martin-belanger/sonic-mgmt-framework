@@ -48,7 +48,7 @@ def call_method(name, args):
 
 def generate_body(func, args):
     body = None
-    if func.__name__ == 'get_sonic_portchannel_sonic_portchannel_state':
+    if func.__name__ == 'get_sonic_portchannel_sonic_portchannel_lag_table':
         keypath = []
     else:
        body = {}
@@ -78,33 +78,33 @@ def run(func, args):
         else:
             # Get Command Output
             api_response = aa.api_client.sanitize_for_serialization(api_response)
-            if 'sonic-portchannel:sonic-portchannel-state' in api_response:
-                value = api_response['sonic-portchannel:sonic-portchannel-state']
-                if 'LAG_MEMBER_TABLE' in value:
-                    lagMemberlst = value['LAG_MEMBER_TABLE']
-                    #updateVlanToIntfMap(vlanMemberTup, args[0])
-                if 'LAG_TABLE' in value:
-                    laglst = value['LAG_TABLE']
-                    #updateVlanInfoMap(vlanTup, args[0])
+            if 'sonic-portchannel:LAG_TABLE' in api_response:
+                value = api_response['sonic-portchannel:LAG_TABLE']
+                if 'LAG_TABLE_LIST' in value:
+                    laglst = value['LAG_TABLE_LIST']
             if api_response is None:
                 print("Failed")
             else:
-                if func.__name__ == 'get_sonic_portchannel_sonic_portchannel_state':
+                if func.__name__ == 'get_sonic_portchannel_sonic_portchannel_lag_table':
+		    memlst=[]
+                    # Get members for all PortChannels
+                    api_response_members = getattr(aa,'get_sonic_portchannel_sonic_portchannel_lag_member_table')(*keypath)
+                    api_response_members = aa.api_client.sanitize_for_serialization(api_response_members)
+                    if 'sonic-portchannel:LAG_MEMBER_TABLE' in api_response_members:
+                        memlst = api_response_members['sonic-portchannel:LAG_MEMBER_TABLE']['LAG_MEMBER_TABLE_LIST']                   
                     for pc_dict in laglst:
                         pc_dict['members']=[]
                         if pc_dict['name'] == "lacp":
                             pc_dict['name'] = "DYNAMIC"
-                        if pc_dict['oper_status'] = "down":
+                        if pc_dict['oper_status'] == "down":
                             pc_dict['oper_status'] = "D"
-                        for mem_dict in lagMemberlst:
+                        else:
+                            pc_dict['oper_status'] = "U"
+                        
+                        for mem_dict in memlst:
                             if mem_dict['name'] == pc_dict['lagname']:
         	                keypath = [mem_dict['ifname']]
-                                api_response2 = getattr(aa2,"get_sonic_port_sonic_port_port")(*keypath) 
-                                memOperStatus=api_response2['sonic_port_port'][0]['oper_status']
-                                print(memOperStatus)
-                                pc_dict['members'].append(mem_dict['ifname']+"(D)")
-
-                     #print("passed")
+                                pc_dict['members'].append(mem_dict['ifname'])
                     show_cli_output("show_portchannel.j2", laglst)
                 else:
                      return

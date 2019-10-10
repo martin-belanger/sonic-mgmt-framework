@@ -206,7 +206,7 @@ func (app *IntfApp) translateUpdatePhyIntfEthernetLag(d *db.DB, ifKey *string, i
         lagStr := "PortChannel" + (lagId)
         err = app.validateLagExists(d, &lagStr)
         if err != nil {
-                errStr := "Invalid Port channel:" + lagStr
+                errStr := "Invalid PortChannel:" + lagStr
                 err = tlerr.InvalidArgsError{Format: errStr}
                 return err
         }
@@ -216,6 +216,8 @@ func (app *IntfApp) translateUpdatePhyIntfEthernetLag(d *db.DB, ifKey *string, i
             for i, _ := range lagKeys {
                 if *ifKey == lagKeys[i].Get(1) {
                     log.Info("Given interface already part of PortChannel:", lagKeys[i].Get(0))
+                    errStr := "Given interface already part of PortChannel" + lagKeys[i].Get(0)
+                    err = tlerr.InvalidArgsError{Format: errStr}
                     return err;
                 }
             }
