@@ -63,7 +63,6 @@ build-deps:
 go-deps: $(BUILD_DIR)/.godeps_done
 
 $(BUILD_DIR)/.godeps_done:
-	@echo $(GO) get -v $(GO_DEPS_LIST)
 	$(GO) get -v $(GO_DEPS_LIST)
 	touch $@
 
