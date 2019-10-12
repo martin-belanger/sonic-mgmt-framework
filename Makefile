@@ -60,14 +60,16 @@ all: build-deps go-deps go-redis-patch go-patch translib rest-server cli
 build-deps:
 	mkdir -p $(BUILD_DIR)
 
-go-deps: $(GO_DEPS_LIST)
+go-deps: $(BUILD_DIR)/.godeps_done
+
+$(BUILD_DIR)/.godeps_done:
+	@echo $(GO) get -v $(GO_DEPS_LIST)
+	$(GO) get -v $(GO_DEPS_LIST)
+	touch $@
 
 go-redis-patch: go-deps
 	cd $(BUILD_GOPATH)/src/github.com/go-redis/redis; git checkout d19aba07b47683ef19378c4a4d43959672b7cec8 2>/dev/null ; true; \
 $(GO) install -v -gcflags "-N -l" $(BUILD_GOPATH)/src/github.com/go-redis/redis
-
-$(GO_DEPS_LIST):
-	$(GO) get -v $@
 
 cli: rest-server
 	$(MAKE) -C src/CLI

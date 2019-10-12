@@ -1,0 +1,112 @@
+module openconfig-network-instance-annot {
+
+    yang-version "1";
+
+    namespace "http://openconfig.net/yang/annotation";
+    prefix "oc-netinst-annot";
+
+    import openconfig-network-instance { prefix oc-netinst; }
+    import openconfig-network-instance-l3 { prefix oc-ni-l3; }
+    import openconfig-types { prefix oc-types; }
+    import openconfig-mpls { prefix oc-mpls; }
+    import openconfig-vlan { prefix oc-vlan; }
+    import openconfig-network-instance-types { prefix oc-ni-types; }
+    import openconfig-policy-types { prefix oc-pol-types; }
+    import openconfig-local-routing { prefix oc-loc-rt; }
+    import openconfig-interfaces { prefix oc-if; }
+    import ietf-inet-types { prefix inet; }
+    import openconfig-extensions { prefix oc-ext; }
+    import openconfig-pim { prefix oc-pim; }
+    import openconfig-routing-policy { prefix oc-rpol; }
+    import openconfig-bgp { prefix oc-bgp; }
+    import openconfig-policy-forwarding { prefix oc-pf; }
+    import openconfig-isis { prefix oc-isis; }
+    import openconfig-igmp { prefix oc-igmp; }
+    import ietf-yang-types { prefix yang; }
+    import openconfig-ospfv2 { prefix oc-ospfv2; }
+    import openconfig-segment-routing { prefix oc-sr; }
+    import openconfig-aft { prefix oc-aft; }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-bgp:bgp/oc-bgp:global {
+		deviate add {
+            sonic-ext:db-name "CONFIG_DB";
+			sonic-ext:table-name "BGP_GLOBALS";
+            sonic-ext:key-transformer "bgp_gbl_tbl_key";
+		}
+    }
+
+	deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-bgp:bgp/oc-bgp:global/oc-bgp:config/oc-bgp:as {
+		deviate add {
+			sonic-ext:field-name "local_asn";
+		}
+	}
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-bgp:bgp/oc-bgp:global/oc-bgp:config/oc-bgp:router-id {
+		deviate add {
+			sonic-ext:field-name "router_id";
+		}
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-bgp:bgp/oc-bgp:global/oc-bgp:use-multiple-paths/oc-bgp:ebgp/oc-bgp:config/oc-bgp:allow-multiple-as {
+      deviate add {
+      }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-bgp:bgp/oc-bgp:global/oc-bgp:use-multiple-paths/oc-bgp:ebgp/oc-bgp:state/oc-bgp:allow-multiple-as {
+      deviate add {
+      }
+    }
+
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-bgp:bgp/oc-bgp:global/oc-bgp:graceful-restart/oc-bgp:config/oc-bgp:enabled {
+      deviate add {
+			sonic-ext:field-name "graceful_restart_enable";
+      }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-bgp:bgp/oc-bgp:global/oc-bgp:graceful-restart/oc-bgp:config/oc-bgp:restart-time {
+      deviate add {
+      }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-bgp:bgp/oc-bgp:global/oc-bgp:graceful-restart/oc-bgp:config/oc-bgp:stale-routes-time {
+      deviate add {
+      }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-bgp:bgp/oc-bgp:global/oc-bgp:graceful-restart/oc-bgp:state/oc-bgp:enabled {
+      deviate add {
+      }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-bgp:bgp/oc-bgp:global/oc-bgp:graceful-restart/oc-bgp:state/oc-bgp:restart-time {
+      deviate add {
+      }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-bgp:bgp/oc-bgp:global/oc-bgp:graceful-restart/oc-bgp:state/oc-bgp:stale-routes-time {
+      deviate add {
+      }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-bgp:bgp/oc-bgp:global/oc-bgp:default-route-distance/oc-bgp:config/oc-bgp:external-route-distance {
+      deviate add {
+      }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-bgp:bgp/oc-bgp:global/oc-bgp:default-route-distance/oc-bgp:state/oc-bgp:external-route-distance {
+      deviate add {
+      }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-bgp:bgp/oc-bgp:global/oc-bgp:default-route-distance/oc-bgp:config/oc-bgp:internal-route-distance {
+      deviate add {
+      }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-bgp:bgp/oc-bgp:global/oc-bgp:default-route-distance/oc-bgp:state/oc-bgp:internal-route-distance {
+      deviate add {
+      }
+    }
+}
+

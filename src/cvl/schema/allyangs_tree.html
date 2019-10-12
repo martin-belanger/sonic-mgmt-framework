@@ -1,0 +1,1737 @@
+<head><title> sonic-acl sonic-bgp-global sonic-bgp-neighbor sonic-common sonic-interface sonic-mgmt-interface sonic-mgmt-port sonic-mirror-session sonic-port 
+</title>
+<style type="text/css" media="all">
+
+body, h1, h2, h3, h4, h5, h6, p, td, table td, input, select {
+        font-family: Verdana, Helvetica, Arial, sans-serif;
+        font-size: 10pt;
+}
+
+body, ol, li, h2 {padding:0; margin: 0;}
+
+ol#root  {padding-left: 5px; margin-top: 2px; margin-bottom: 1px;
+          list-style: none;}
+
+#root ol {padding-left: 5px; margin-top: 2px; margin-bottom: 1px;
+          list-style: none;}
+
+#root li {margin-bottom: 1px; padding-left: 5px;  margin-top: 2px;
+          font-size: x-small;}
+
+.panel   {border-bottom: 1px solid #999; margin-bottom: 2px; margin-top: 2px;
+          background: #eee;}
+
+#root ul {margin-bottom: 1px; margin-top: 2px; list-style-position: inside;}
+
+#root a {text-decoration: none;}
+
+.folder {
+   
+background:url(data:image/gif;base64,R0lGODlhGgAOALMLAJmZmYuLi3p6ev///+zs7MzMzGZmZqqqqrS0tLq6uuHh4f///wAAAAAAAAAAAAAAACH5BAEAAAsALAAAAAAaAA4AAASJcMlJq714qgROKUtxAABBgJkUFMQwFEhyFoFAKini7idSHwGDQXAYYAADxQdBOjiBQqGgYKx4AomCYoYAHqLRVVUCKCBdSthhCgYDKIDuTpnoGgptgxged3FHBgpgU2MTASsmdCM1gkNFGDVaHx91QQQ3KZGSZocHBCEpEgIrCYdxn6EVAnoIGREAOw==)  no-repeat; float: left; padding-right: 30px;margin-left: 3px;
+          
+}
+
+.doc {
+   
+background:url(data:image/gif;base64,R0lGODlhDAAOALMJAMzMzODg4P///+np6a+vr+7u7jMzM5mZmYmJif///wAAAAAAAAAAAAAAAAAAAAAAACH5BAEAAAkALAAAAAAMAA4AAARFEEhyCAEjackPCESwBRxwCKD4BSSACCgxrKyJ3B42sK2FSINgsAa4AApI4W5yFCCTywts+txJp9TC4IrFcruwi2FMLgMiADs=)
+no-repeat; float: left; padding-right: 10px; margin-left: 3px;
+cursor: pointer;
+          
+}
+
+.leaf {
+   
+background:url(data:image/gif;base64,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)
+no-repeat; float: left; padding-right: 10px;margin-left: 3px;
+          
+}
+
+.leaf-list {
+   
+background:url(data:image/gif;base64,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)
+no-repeat; float: left; padding-right: 10px; margin-left: 3px;
+          
+}
+
+.action {
+   
+background:url(data:image/gif;base64,R0lGODlhEAAQALMAAAAAABERETMzM1VVVWZmZnd3d4iIiJmZmaqqqru7u8zMzO7u7v///wAAAAAAAAAAACH5BAkKAA0AIf8LSUNDUkdCRzEwMTL/AAAHqGFwcGwCIAAAbW50clJHQiBYWVogB9kAAgAZAAsAGgALYWNzcEFQUEwAAAAAYXBwbAAAAAAAAAAAAAAAAAAAAAAAAPbWAAEAAAAA0y1hcHBsAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAALZGVzYwAAAQgAAABvZHNjbQAAAXgAAAVsY3BydAAABuQAAAA4d3RwdAAABxwAAAAUclhZWgAABzAAAAAUZ1hZWgAAB0QAAAAUYlhZWgAAB1gAAAAUclRSQwAAB2wAAAAOY2hhZAAAB3wAAAAsYlRSQwAAB2wAAAAOZ1RS/0MAAAdsAAAADmRlc2MAAAAAAAAAFEdlbmVyaWMgUkdCIFByb2ZpbGUAAAAAAAAAAAAAABRHZW5lcmljIFJHQiBQcm9maWxlAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABtbHVjAAAAAAAAAB4AAAAMc2tTSwAAACgAAAF4aHJIUgAAACgAAAGgY2FFUwAAACQAAAHIcHRCUgAAACYAAAHsdWtVQQAAACoAAAISZnJGVQAAACgAAAI8emhUVwAAABYAAAJkaXRJVAAAACgAAAJ6bmJOTwAAACYAAAKia29LUgAAABYAAP8CyGNzQ1oAAAAiAAAC3mhlSUwAAAAeAAADAGRlREUAAAAsAAADHmh1SFUAAAAoAAADSnN2U0UAAAAmAAAConpoQ04AAAAWAAADcmphSlAAAAAaAAADiHJvUk8AAAAkAAADomVsR1IAAAAiAAADxnB0UE8AAAAmAAAD6G5sTkwAAAAoAAAEDmVzRVMAAAAmAAAD6HRoVEgAAAAkAAAENnRyVFIAAAAiAAAEWmZpRkkAAAAoAAAEfHBsUEwAAAAsAAAEpHJ1UlUAAAAiAAAE0GFyRUcAAAAmAAAE8mVuVVMAAAAmAAAFGGRhREsAAAAuAAAFPgBWAWEAZQBvAGIAZQD/YwBuAP0AIABSAEcAQgAgAHAAcgBvAGYAaQBsAEcAZQBuAGUAcgBpAQ0AawBpACAAUgBHAEIAIABwAHIAbwBmAGkAbABQAGUAcgBmAGkAbAAgAFIARwBCACAAZwBlAG4A6AByAGkAYwBQAGUAcgBmAGkAbAAgAFIARwBCACAARwBlAG4A6QByAGkAYwBvBBcEMAQzBDAEOwRMBD0EOAQ5ACAEPwRABD4ERAQwBDkEOwAgAFIARwBCAFAAcgBvAGYAaQBsACAAZwDpAG4A6QByAGkAcQB1AGUAIABSAFYAQpAadSgAIABSAEcAQgAggnJfaWPPj/AAUAByAG8AZgBp/wBsAG8AIABSAEcAQgAgAGcAZQBuAGUAcgBpAGMAbwBHAGUAbgBlAHIAaQBzAGsAIABSAEcAQgAtAHAAcgBvAGYAaQBsx3y8GAAgAFIARwBCACDVBLhc0wzHfABPAGIAZQBjAG4A/QAgAFIARwBCACAAcAByAG8AZgBpAGwF5AXoBdUF5AXZBdwAIABSAEcAQgAgBdsF3AXcBdkAQQBsAGwAZwBlAG0AZQBpAG4AZQBzACAAUgBHAEIALQBQAHIAbwBmAGkAbADBAGwAdABhAGwA4QBuAG8AcwAgAFIARwBCACAAcAByAG8AZgBpAGxmbpAaACAAUgBHAEIAIGPPj//wZYdO9k4AgiwAIABSAEcAQgAgMNcw7TDVMKEwpDDrAFAAcgBvAGYAaQBsACAAUgBHAEIAIABnAGUAbgBlAHIAaQBjA5MDtQO9A7kDugPMACADwAPBA78DxgOvA7sAIABSAEcAQgBQAGUAcgBmAGkAbAAgAFIARwBCACAAZwBlAG4A6QByAGkAYwBvAEEAbABnAGUAbQBlAGUAbgAgAFIARwBCAC0AcAByAG8AZgBpAGUAbA5CDhsOIw5EDh8OJQ5MACAAUgBHAEIAIA4XDjEOSA4nDkQOGwBHAGUAbgBlAGwAIABSAEcAQgAgAFAAcgBvAGYAaQBsAGkAWQBsAGX/AGkAbgBlAG4AIABSAEcAQgAtAHAAcgBvAGYAaQBpAGwAaQBVAG4AaQB3AGUAcgBzAGEAbABuAHkAIABwAHIAbwBmAGkAbAAgAFIARwBCBB4EMQRJBDgEOQAgBD8EQAQ+BEQEOAQ7BEwAIABSAEcAQgZFBkQGQQAgBioGOQYxBkoGQQAgAFIARwBCACAGJwZEBjkGJwZFAEcAZQBuAGUAcgBpAGMAIABSAEcAQgAgAFAAcgBvAGYAaQBsAGUARwBlAG4AZQByAGUAbAAgAFIARwBCAC0AYgBlAHMAawByAGkAdgBlAGwAcwBldGV4dAAAAABDb3B5cmlnaHQgMjAwrzcgQXBwbGUgSW5jLiwgYWxsIHJpZ2h0cyByZXNlcnZlZC4AWFlaIAAAAAAAAPNSAAEAAAABFs9YWVogAAAAAAAAdE0AAD3uAAAD0FhZWiAAAAAAAABadQAArHMAABc0WFlaIAAAAAAAACgaAAAVnwAAuDZjdXJ2AAAAAAAAAAEBzQAAc2YzMgAAAAAAAQxCAAAF3v//8yYAAAeSAAD9kf//+6L///2jAAAD3AAAwGwALAAAAAAQABAAAARDsIFJ62xYDhDY+l+CXJIxBQoxEMdUtNI1KQUVA1nO4XqeAQKebwgUDn+DgPEoUS6PuyfRydQplVXMDpvdSq3U7G0YAQA7)
+no-repeat; float: left; height: 14px; width: 12px; padding-right: 10px; margin-left: 3px;
+          
+}
+
+.tier1  {margin-left: 0;     }
+.tier2  {margin-left: 1.5em; }
+.tier3  {margin-left: 3em;   }
+.tier4  {margin-left: 4.5em; }
+.tier5  {margin-left: 6em;   }
+.tier6  {margin-left: 7.5em; }
+.tier7  {margin-left: 9em;   }
+.tier8  {margin-left: 10.5em;}
+.tier9  {margin-left: 12em;  }
+.tier10 {margin-left: 13.5em;}
+.tier11 {margin-left: 15em;  }
+.tier12 {margin-left: 16.5em;}
+
+.level1 {padding-left: 0;    }
+.level2 {padding-left: 1em;  }
+.level3 {padding-left: 2em;  }
+.level4 {padding-left: 3em;  }
+</style>
+
+<script language="javascript1.2">
+function toggleRows(elm) {
+ var rows = document.getElementsByTagName("TR");
+ elm.style.backgroundImage = "url(data:image/gif;base64,R0lGODlhGgAOALMLAJmZmYuLi3p6ev///+zs7MzMzGZmZqqqqrS0tLq6uuHh4f///wAAAAAAAAAAAAAAACH5BAEAAAsALAAAAAAaAA4AAASJcMlJq714qgROKUtxAABBgJkUFMQwFEhyFoFAKini7idSHwGDQXAYYAADxQdBOjiBQqGgYKx4AomCYoYAHqLRVVUCKCBdSthhCgYDKIDuTpnoGgptgxged3FHBgpgU2MTASsmdCM1gkNFGDVaHx91QQQ3KZGSZocHBCEpEgIrCYdxn6EVAnoIGREAOw==)";
+ var newDisplay = "none";
+ var thisID = elm.parentNode.parentNode.parentNode.id + "-";
+ // Are we expanding or contracting? If the first child is hidden, we expand
+  for (var i = 0; i < rows.length; i++) {
+   var r = rows[i];
+   if (matchStart(r.id, thisID, true)) {
+    if (r.style.display == "none") {
+     if (document.all) newDisplay = "block"; //IE4+ specific code
+     else newDisplay = "table-row"; //Netscape and Mozilla
+     elm.style.backgroundImage = "url(data:image/gif;base64,R0lGODlhGgAOALMLAJmZmYqKiv///+zs7MzMzGZmZrOzs7q6uqqqqnZ2duHh4f///wAAAAAAAAAAAAAAACH5BAEAAAsALAAAAAAaAA4AAASScMlJq714qgMMIQuBAMAwZBRADIJAGMfwBQE6GW0uGzRS2wuAQPHhABAIAyBAABSe0IJKgiAEDgSF7OVDBKNQwEQlbBG5CZAiAA4oxsoc8WBAFEALe9SQ6rS2dU5vCwJsTwECKUwmcyMBCYMhUHgTj1kfRTwFJxKFBYgVlpdNNCUVBHcWCUwHpQacFgJCqp98GBEAOw==)";
+    }
+    break;
+   }
+ }
+
+ // When expanding, only expand one level.  Collapse all desendants.
+ var matchDirectChildrenOnly = (newDisplay != "none");
+
+ for (var j = 0; j < rows.length; j++) {
+   var s = rows[j];
+   if (matchStart(s.id, thisID, matchDirectChildrenOnly)) {
+     s.style.display = newDisplay;
+     var cell = s.getElementsByTagName("TD")[0];
+     var tier = cell.getElementsByTagName("DIV")[0];
+     var folder = tier.getElementsByTagName("A")[0];
+     if (folder.getAttribute("onclick") != null) {
+     folder.style.backgroundImage = "url(data:image/gif;base64,R0lGODlhGgAOALMLAJmZmYuLi3p6ev///+zs7MzMzGZmZqqqqrS0tLq6uuHh4f///wAAAAAAAAAAAAAAACH5BAEAAAsALAAAAAAaAA4AAASJcMlJq714qgROKUtxAABBgJkUFMQwFEhyFoFAKini7idSHwGDQXAYYAADxQdBOjiBQqGgYKx4AomCYoYAHqLRVVUCKCBdSthhCgYDKIDuTpnoGgptgxged3FHBgpgU2MTASsmdCM1gkNFGDVaHx91QQQ3KZGSZocHBCEpEgIrCYdxn6EVAnoIGREAOw==)";
+     }
+   }
+ }
+}
+
+function matchStart(target, pattern, matchDirectChildrenOnly) {
+ var pos = target.indexOf(pattern);
+ if (pos != 0)
+    return false;
+ if (!matchDirectChildrenOnly)
+    return true;
+ if (target.slice(pos + pattern.length, target.length).indexOf("-") >= 0)
+    return false;
+ return true;
+}
+
+function collapseAllRows() {
+ var rows = document.getElementsByTagName("TR");
+ for (var i = 0; i < rows.length; i++) {
+   var r = rows[i];
+   if (r.id.indexOf("-") >= 0) {
+     r.style.display = "none";
+   }
+ }
+}
+
+function expandAllRows() {
+  var rows = document.getElementsByTagName("TR");
+  for (var i = 0; i < rows.length; i ++) {
+    var r = rows[i];
+    if (r.id.indexOf("-") >= 0) {
+      r.style.display = "table-row";
+    }
+  }
+}
+</script>
+
+<body onload="collapseAllRows();">
+<a href="http://www.tail-f.com">
+   <img src= "data:image/gif;base64,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"  />
+</a>
+<div class="app">
+<div style="background: #eee; border: dashed 1px #000;">
+<h1> Module: <font color=blue>sonic-acl</font>, Namespace:
+                    <font color=blue>http://github.com/Azure/sonic-acl</font>, Prefix:
+                    <font color=blue>sacl</font></h1> 
+<h1> Module: <font color=blue>sonic-bgp-global</font>, Namespace:
+                    <font color=blue>http://github.com/Azure/sonic-bgp-global</font>, Prefix:
+                    <font color=blue>sbgpg</font></h1> 
+<h1> Module: <font color=blue>sonic-bgp-neighbor</font>, Namespace:
+                    <font color=blue>http://github.com/Azure/sonic-bgp-neighbor</font>, Prefix:
+                    <font color=blue>sbnbr</font></h1> 
+<h1> Module: <font color=blue>sonic-common</font>, Namespace:
+                    <font color=blue>http://github.com/Azure/sonic-common</font>, Prefix:
+                    <font color=blue>sv</font></h1> 
+<h1> Module: <font color=blue>sonic-interface</font>, Namespace:
+                    <font color=blue>http://github.com/Azure/sonic-interface</font>, Prefix:
+                    <font color=blue>sint</font></h1> 
+<h1> Module: <font color=blue>sonic-mgmt-interface</font>, Namespace:
+                    <font color=blue>http://github.com/Azure/sonic-mgmt-interface</font>, Prefix:
+                    <font color=blue>sint</font></h1> 
+<h1> Module: <font color=blue>sonic-mgmt-port</font>, Namespace:
+                    <font color=blue>http://github.com/Azure/sonic-mgmt-port</font>, Prefix:
+                    <font color=blue>prt</font></h1> 
+<h1> Module: <font color=blue>sonic-mirror-session</font>, Namespace:
+                    <font color=blue>http://github.com/Azure/sonic-mirror-session</font>, Prefix:
+                    <font color=blue>sms</font></h1> 
+<h1> Module: <font color=blue>sonic-port</font>, Namespace:
+                    <font color=blue>http://github.com/Azure/sonic-port</font>, Prefix:
+                    <font color=blue>prt</font></h1> 
+
+ <table width="100%">
+
+ <tr>
+  <!-- specifing one or more widths keeps columns
+       constant despite changes in visible content -->
+  <th align=left>
+     Element
+     <a href='#' onclick='expandAllRows();'>[+]Expand all</a>
+     <a href='#' onclick='collapseAllRows();'>[-]Collapse all</a>
+  </th>
+  <th align=left>Schema</th>
+  <th align=left>Type</th>
+  <th align=left>Flags</th>
+  <th align=left>Opts</th>
+  <th align=left>Status</th>
+  <th align=left>Path</th>
+</tr>
+<tr id="1" class="a">
+                         <td id="p1">
+                            <div id="p2" class="tier1">
+                               <a href="#" id="p3"
+                                  onclick="toggleRows(this);return false;"
+                                  class="folder">&nbsp;
+                               </a>
+                               <font color=blue>sonic-acl</font>
+                            </div>
+                         </td> 
+<td>module</td><td></td><td></td><td></td><td>
+                        </td></tr>
+<tr id="1-1" class="a">
+                       <td nowrap id="p4000">
+                          <div id="p5000" class="tier2">
+                             <a href="#" id="p6000"
+                                onclick="toggleRows(this);return false"
+                                class="folder">&nbsp;
+                             </a>
+                             <abbr title="No description">sonic-acl</abbr>
+                          </div>
+                       </td> 
+<td nowrap>container</td>
+                    <td nowrap></td>
+                    <td nowrap>config</td>
+                    <td></td>
+                    <td>current</td>
+                    <td nowrap>/sacl:sonic-acl</td>
+                    </tr> 
+<tr id="1-1-1" class="a">
+                       <td nowrap id="p4000">
+                          <div id="p5000" class="tier3">
+                             <a href="#" id="p6000"
+                                onclick="toggleRows(this);return false"
+                                class="folder">&nbsp;
+                             </a>
+                             <abbr title="No description">ACL_TABLE[aclname]</abbr>
+                          </div>
+                       </td> 
+<td nowrap>list</td>
+                    <td nowrap></td>
+                    <td nowrap>config</td>
+                    <td></td>
+                    <td>current</td>
+                    <td nowrap>/sacl:sonic-acl/sacl:ACL_TABLE</td>
+                    </tr> 
+<tr id="1-1-1-1" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description">  aclname </abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="string
+ {length = 1..72} {pattern = [a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,71})}">string</abbr></td>
+                       <td nowrap>config</td>
+                       <td></td>
+                       <td>current</td>
+                       <td nowrap>/sacl:sonic-acl/sacl:ACL_TABLE/sacl:aclname</td</tr> 
+<tr id="1-1-1-2" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> policy_desc </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="string
+ {length = 1..255}">string</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sacl:sonic-acl/sacl:ACL_TABLE/sacl:policy_desc</td</tr> 
+<tr id="1-1-1-3" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> stage </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="enumeration
+ : {INGRESS,EGRESS,}">enumeration</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sacl:sonic-acl/sacl:ACL_TABLE/sacl:stage</td</tr> 
+<tr id="1-1-1-4" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> type </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="enumeration
+ : {MIRROR,L2,L3,L3V6,}">enumeration</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sacl:sonic-acl/sacl:ACL_TABLE/sacl:type</td</tr> 
+<tr id="1-1-1-5" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf-list">&nbsp;</a>
+                             <abbr title="No description">  ports </abbr>
+                          </div>
+                       </td>
+                       <td>leaf-list</td>
+                       <td nowrap><abbr title="leafref
+ : /prt:sonic-port/prt:PORT/prt:ifname">leafref</abbr></td>
+                       <td nowrap>config</td>
+                       <td>*</td>
+                       <td>current</td>
+                       <td nowrap>/sacl:sonic-acl/sacl:ACL_TABLE/sacl:ports</td</tr> 
+<tr id="1-1-2" class="a">
+                       <td nowrap id="p4000">
+                          <div id="p5000" class="tier3">
+                             <a href="#" id="p6000"
+                                onclick="toggleRows(this);return false"
+                                class="folder">&nbsp;
+                             </a>
+                             <abbr title="No description">ACL_RULE[aclname rulename]</abbr>
+                          </div>
+                       </td> 
+<td nowrap>list</td>
+                    <td nowrap></td>
+                    <td nowrap>config</td>
+                    <td></td>
+                    <td>current</td>
+                    <td nowrap>/sacl:sonic-acl/sacl:ACL_RULE</td>
+                    </tr> 
+<tr id="1-1-2-6" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description">  aclname </abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="leafref
+ : ../../ACL_TABLE/aclname">leafref</abbr></td>
+                       <td nowrap>config</td>
+                       <td></td>
+                       <td>current</td>
+                       <td nowrap>/sacl:sonic-acl/sacl:ACL_RULE/sacl:aclname</td</tr> 
+<tr id="1-1-2-7" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description">  rulename </abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="string
+">string</abbr></td>
+                       <td nowrap>config</td>
+                       <td></td>
+                       <td>current</td>
+                       <td nowrap>/sacl:sonic-acl/sacl:ACL_RULE/sacl:rulename</td</tr> 
+<tr id="1-1-2-8" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> PRIORITY </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="uint16
+ [1..65535]">uint16</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sacl:sonic-acl/sacl:ACL_RULE/sacl:PRIORITY</td</tr> 
+<tr id="1-1-2-9" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> RULE_DESCRIPTION </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="string
+">string</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sacl:sonic-acl/sacl:ACL_RULE/sacl:RULE_DESCRIPTION</td</tr> 
+<tr id="1-1-2-10" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> PACKET_ACTION </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="enumeration
+ : {FORWARD,DROP,REDIRECT,}">enumeration</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sacl:sonic-acl/sacl:ACL_RULE/sacl:PACKET_ACTION</td</tr> 
+<tr id="1-1-2-11" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> MIRROR_ACTION </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="leafref
+ : /sms:sonic-mirror-session/sms:MIRROR_SESSION/sms:name">leafref</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sacl:sonic-acl/sacl:ACL_RULE/sacl:MIRROR_ACTION</td</tr> 
+<tr id="1-1-2-12" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> IP_TYPE </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="enumeration
+ : {ANY,IP,IPV4,IPV4ANY,NON_IPV4,IPV6ANY,NON_IPV6,}">enumeration</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sacl:sonic-acl/sacl:ACL_RULE/sacl:IP_TYPE</td</tr> 
+<tr id="1-1-2-13" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> IP_PROTOCOL </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="uint8
+ [1|2|6|17|46|47|51|103|115]">uint8</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sacl:sonic-acl/sacl:ACL_RULE/sacl:IP_PROTOCOL</td</tr> 
+<tr id="1-1-2-14" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> ETHER_TYPE </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="string
+ {pattern = (0x88CC)|(0x8100)|(0x8915)|(0x0806)|(0x0800)|(0x86DD)|(0x8847)}">string</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sacl:sonic-acl/sacl:ACL_RULE/sacl:ETHER_TYPE</td</tr> 
+<tr id="1-1-2-15" class="a">
+                       <td nowrap id="p4000">
+                          <div id="p5000" class="tier4">
+                             <a href="#" id="p6000"
+                                onclick="toggleRows(this);return false"
+                                class="folder">&nbsp;
+                             </a>
+                             <abbr title="No description">(ip_src_dst)</abbr>
+                          </div>
+                       </td> 
+<td nowrap>choice</td>
+                    <td nowrap></td>
+                    <td nowrap>config</td>
+                    <td>Choice</td>
+                    <td>current</td>
+                    <td nowrap>/sacl:sonic-acl/sacl:ACL_RULE</td>
+                    </tr> 
+<tr id="1-1-2-15-1" class="a">
+                       <td nowrap id="p4000">
+                          <div id="p5000" class="tier5">
+                             <a href="#" id="p6000"
+                                onclick="toggleRows(this);return false"
+                                class="folder">&nbsp;
+                             </a>
+                             <abbr title="No description">:(ipv4_src_dst)</abbr>
+                          </div>
+                       </td> 
+<td nowrap>case</td>
+                    <td nowrap></td>
+                    <td nowrap>config</td>
+                    <td></td>
+                    <td>current</td>
+                    <td nowrap>/sacl:sonic-acl/sacl:ACL_RULE</td>
+                    </tr> 
+<tr id="1-1-2-15-1-1" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier6>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description">  SRC_IP </abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="inet:ipv4-prefix
+string
+ {pattern = (([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])/(([0-9])|([1-2][0-9])|(3[0-2]))}">inet:ipv4-prefix</abbr></td>
+                       <td nowrap>config</td>
+                       <td></td>
+                       <td>current</td>
+                       <td nowrap>/sacl:sonic-acl/sacl:ACL_RULE/sacl:SRC_IP</td</tr> 
+<tr id="1-1-2-15-1-2" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier6>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description">  DST_IP </abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="inet:ipv4-prefix
+string
+ {pattern = (([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])/(([0-9])|([1-2][0-9])|(3[0-2]))}">inet:ipv4-prefix</abbr></td>
+                       <td nowrap>config</td>
+                       <td></td>
+                       <td>current</td>
+                       <td nowrap>/sacl:sonic-acl/sacl:ACL_RULE/sacl:DST_IP</td</tr> 
+<tr id="1-1-2-15-2" class="a">
+                       <td nowrap id="p4000">
+                          <div id="p5000" class="tier5">
+                             <a href="#" id="p6000"
+                                onclick="toggleRows(this);return false"
+                                class="folder">&nbsp;
+                             </a>
+                             <abbr title="No description">:(ipv6_src_dst)</abbr>
+                          </div>
+                       </td> 
+<td nowrap>case</td>
+                    <td nowrap></td>
+                    <td nowrap>config</td>
+                    <td></td>
+                    <td>current</td>
+                    <td nowrap>/sacl:sonic-acl/sacl:ACL_RULE</td>
+                    </tr> 
+<tr id="1-1-2-15-2-3" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier6>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description">  SRC_IPV6 </abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="inet:ipv6-prefix
+string
+ {pattern = ((:|[0-9a-fA-F]{0,4}):)([0-9a-fA-F]{0,4}:){0,5}((([0-9a-fA-F]{0,4}:)?(:|[0-9a-fA-F]{0,4}))|(((25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])))(/(([0-9])|([0-9]{2})|(1[0-1][0-9])|(12[0-8])))}">inet:ipv6-prefix</abbr></td>
+                       <td nowrap>config</td>
+                       <td></td>
+                       <td>current</td>
+                       <td nowrap>/sacl:sonic-acl/sacl:ACL_RULE/sacl:SRC_IPV6</td</tr> 
+<tr id="1-1-2-15-2-4" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier6>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description">  DST_IPV6 </abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="inet:ipv6-prefix
+string
+ {pattern = ((:|[0-9a-fA-F]{0,4}):)([0-9a-fA-F]{0,4}:){0,5}((([0-9a-fA-F]{0,4}:)?(:|[0-9a-fA-F]{0,4}))|(((25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])))(/(([0-9])|([0-9]{2})|(1[0-1][0-9])|(12[0-8])))}">inet:ipv6-prefix</abbr></td>
+                       <td nowrap>config</td>
+                       <td></td>
+                       <td>current</td>
+                       <td nowrap>/sacl:sonic-acl/sacl:ACL_RULE/sacl:DST_IPV6</td</tr> 
+<tr id="1-1-2-16" class="a">
+                       <td nowrap id="p4000">
+                          <div id="p5000" class="tier4">
+                             <a href="#" id="p6000"
+                                onclick="toggleRows(this);return false"
+                                class="folder">&nbsp;
+                             </a>
+                             <abbr title="No description">(src_port)</abbr>
+                          </div>
+                       </td> 
+<td nowrap>choice</td>
+                    <td nowrap></td>
+                    <td nowrap>config</td>
+                    <td>Choice</td>
+                    <td>current</td>
+                    <td nowrap>/sacl:sonic-acl/sacl:ACL_RULE</td>
+                    </tr> 
+<tr id="1-1-2-16-3" class="a">
+                       <td nowrap id="p4000">
+                          <div id="p5000" class="tier5">
+                             <a href="#" id="p6000"
+                                onclick="toggleRows(this);return false"
+                                class="folder">&nbsp;
+                             </a>
+                             <abbr title="No description">:(l4_src_port)</abbr>
+                          </div>
+                       </td> 
+<td nowrap>case</td>
+                    <td nowrap></td>
+                    <td nowrap>config</td>
+                    <td></td>
+                    <td>current</td>
+                    <td nowrap>/sacl:sonic-acl/sacl:ACL_RULE</td>
+                    </tr> 
+<tr id="1-1-2-16-3-5" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier6>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> L4_SRC_PORT </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="uint16
+">uint16</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sacl:sonic-acl/sacl:ACL_RULE/sacl:L4_SRC_PORT</td</tr> 
+<tr id="1-1-2-16-4" class="a">
+                       <td nowrap id="p4000">
+                          <div id="p5000" class="tier5">
+                             <a href="#" id="p6000"
+                                onclick="toggleRows(this);return false"
+                                class="folder">&nbsp;
+                             </a>
+                             <abbr title="No description">:(l4_src_port_range)</abbr>
+                          </div>
+                       </td> 
+<td nowrap>case</td>
+                    <td nowrap></td>
+                    <td nowrap>config</td>
+                    <td></td>
+                    <td>current</td>
+                    <td nowrap>/sacl:sonic-acl/sacl:ACL_RULE</td>
+                    </tr> 
+<tr id="1-1-2-16-4-6" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier6>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> L4_SRC_PORT_RANGE </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="string
+ {pattern = [0-9]{1,5}(-)[0-9]{1,5}}">string</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sacl:sonic-acl/sacl:ACL_RULE/sacl:L4_SRC_PORT_RANGE</td</tr> 
+<tr id="1-1-2-17" class="a">
+                       <td nowrap id="p4000">
+                          <div id="p5000" class="tier4">
+                             <a href="#" id="p6000"
+                                onclick="toggleRows(this);return false"
+                                class="folder">&nbsp;
+                             </a>
+                             <abbr title="No description">(dst_port)</abbr>
+                          </div>
+                       </td> 
+<td nowrap>choice</td>
+                    <td nowrap></td>
+                    <td nowrap>config</td>
+                    <td>Choice</td>
+                    <td>current</td>
+                    <td nowrap>/sacl:sonic-acl/sacl:ACL_RULE</td>
+                    </tr> 
+<tr id="1-1-2-17-5" class="a">
+                       <td nowrap id="p4000">
+                          <div id="p5000" class="tier5">
+                             <a href="#" id="p6000"
+                                onclick="toggleRows(this);return false"
+                                class="folder">&nbsp;
+                             </a>
+                             <abbr title="No description">:(l4_dst_port)</abbr>
+                          </div>
+                       </td> 
+<td nowrap>case</td>
+                    <td nowrap></td>
+                    <td nowrap>config</td>
+                    <td></td>
+                    <td>current</td>
+                    <td nowrap>/sacl:sonic-acl/sacl:ACL_RULE</td>
+                    </tr> 
+<tr id="1-1-2-17-5-7" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier6>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> L4_DST_PORT </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="uint16
+">uint16</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sacl:sonic-acl/sacl:ACL_RULE/sacl:L4_DST_PORT</td</tr> 
+<tr id="1-1-2-17-6" class="a">
+                       <td nowrap id="p4000">
+                          <div id="p5000" class="tier5">
+                             <a href="#" id="p6000"
+                                onclick="toggleRows(this);return false"
+                                class="folder">&nbsp;
+                             </a>
+                             <abbr title="No description">:(l4_dst_port_range)</abbr>
+                          </div>
+                       </td> 
+<td nowrap>case</td>
+                    <td nowrap></td>
+                    <td nowrap>config</td>
+                    <td></td>
+                    <td>current</td>
+                    <td nowrap>/sacl:sonic-acl/sacl:ACL_RULE</td>
+                    </tr> 
+<tr id="1-1-2-17-6-8" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier6>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> L4_DST_PORT_RANGE </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="string
+ {pattern = [0-9]{1,5}(-)[0-9]{1,5}}">string</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sacl:sonic-acl/sacl:ACL_RULE/sacl:L4_DST_PORT_RANGE</td</tr> 
+<tr id="1-1-2-18" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> TCP_FLAGS </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="string
+ {pattern = 0[xX][0-9a-fA-F]{2}[/]0[xX][0-9a-fA-F]{2}}">string</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sacl:sonic-acl/sacl:ACL_RULE/sacl:TCP_FLAGS</td</tr> 
+<tr id="1-1-2-19" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> DSCP </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="uint8
+">uint8</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sacl:sonic-acl/sacl:ACL_RULE/sacl:DSCP</td</tr> 
+<tr id="4" class="a">
+                         <td id="p1">
+                            <div id="p2" class="tier1">
+                               <a href="#" id="p3"
+                                  onclick="toggleRows(this);return false;"
+                                  class="folder">&nbsp;
+                               </a>
+                               <font color=blue>sonic-bgp-global</font>
+                            </div>
+                         </td> 
+<td>module</td><td></td><td></td><td></td><td>
+                        </td></tr>
+<tr id="4-2" class="a">
+                       <td nowrap id="p4000">
+                          <div id="p5000" class="tier2">
+                             <a href="#" id="p6000"
+                                onclick="toggleRows(this);return false"
+                                class="folder">&nbsp;
+                             </a>
+                             <abbr title="No description">sonic-bgp-global</abbr>
+                          </div>
+                       </td> 
+<td nowrap>container</td>
+                    <td nowrap></td>
+                    <td nowrap>config</td>
+                    <td></td>
+                    <td>current</td>
+                    <td nowrap>/sbgpg:sonic-bgp-global</td>
+                    </tr> 
+<tr id="4-2-3" class="a">
+                       <td nowrap id="p4000">
+                          <div id="p5000" class="tier3">
+                             <a href="#" id="p6000"
+                                onclick="toggleRows(this);return false"
+                                class="folder">&nbsp;
+                             </a>
+                             <abbr title="No description">BGP_GLOBALS[vrf]</abbr>
+                          </div>
+                       </td> 
+<td nowrap>list</td>
+                    <td nowrap></td>
+                    <td nowrap>config</td>
+                    <td></td>
+                    <td>current</td>
+                    <td nowrap>/sbgpg:sonic-bgp-global/sbgpg:BGP_GLOBALS</td>
+                    </tr> 
+<tr id="4-2-3-20" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description">  vrf </abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="string
+">string</abbr></td>
+                       <td nowrap>config</td>
+                       <td></td>
+                       <td>current</td>
+                       <td nowrap>/sbgpg:sonic-bgp-global/sbgpg:BGP_GLOBALS/sbgpg:vrf</td</tr> 
+<tr id="4-2-3-21" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> router_id </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="uint16
+">uint16</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sbgpg:sonic-bgp-global/sbgpg:BGP_GLOBALS/sbgpg:router_id</td</tr> 
+<tr id="4-2-3-22" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> local_asn </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="uint32
+">uint32</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sbgpg:sonic-bgp-global/sbgpg:BGP_GLOBALS/sbgpg:local_asn</td</tr> 
+<tr id="4-2-3-23" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> always_compare_med </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="boolean
+">boolean</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sbgpg:sonic-bgp-global/sbgpg:BGP_GLOBALS/sbgpg:always_compare_med</td</tr> 
+<tr id="4-2-3-24" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> load_balance_mp_relax </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="boolean
+">boolean</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sbgpg:sonic-bgp-global/sbgpg:BGP_GLOBALS/sbgpg:load_balance_mp_relax</td</tr> 
+<tr id="4-2-3-25" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> grace_restart_enable </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="boolean
+">boolean</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sbgpg:sonic-bgp-global/sbgpg:BGP_GLOBALS/sbgpg:grace_restart_enable</td</tr> 
+<tr id="4-2-3-26" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> gr_restart_time </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="uint16
+ [1..3600]">uint16</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sbgpg:sonic-bgp-global/sbgpg:BGP_GLOBALS/sbgpg:gr_restart_time</td</tr> 
+<tr id="4-2-3-27" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> gr_stale_routes_time </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="uint16
+ [1..3600]">uint16</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sbgpg:sonic-bgp-global/sbgpg:BGP_GLOBALS/sbgpg:gr_stale_routes_time</td</tr> 
+<tr id="4-2-3-28" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> ebgp_route_distance </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="uint8
+ [1..255]">uint8</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sbgpg:sonic-bgp-global/sbgpg:BGP_GLOBALS/sbgpg:ebgp_route_distance</td</tr> 
+<tr id="4-2-3-29" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> ibgp_route_distance </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="uint8
+ [1..255]">uint8</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sbgpg:sonic-bgp-global/sbgpg:BGP_GLOBALS/sbgpg:ibgp_route_distance</td</tr> 
+<tr id="7" class="a">
+                         <td id="p1">
+                            <div id="p2" class="tier1">
+                               <a href="#" id="p3"
+                                  onclick="toggleRows(this);return false;"
+                                  class="folder">&nbsp;
+                               </a>
+                               <font color=blue>sonic-bgp-neighbor</font>
+                            </div>
+                         </td> 
+<td>module</td><td></td><td></td><td></td><td>
+                        </td></tr>
+<tr id="7-3" class="a">
+                       <td nowrap id="p4000">
+                          <div id="p5000" class="tier2">
+                             <a href="#" id="p6000"
+                                onclick="toggleRows(this);return false"
+                                class="folder">&nbsp;
+                             </a>
+                             <abbr title="No description">sonic-bgp-neighbor</abbr>
+                          </div>
+                       </td> 
+<td nowrap>container</td>
+                    <td nowrap></td>
+                    <td nowrap>config</td>
+                    <td></td>
+                    <td>current</td>
+                    <td nowrap>/sbnbr:sonic-bgp-neighbor</td>
+                    </tr> 
+<tr id="7-3-4" class="a">
+                       <td nowrap id="p4000">
+                          <div id="p5000" class="tier3">
+                             <a href="#" id="p6000"
+                                onclick="toggleRows(this);return false"
+                                class="folder">&nbsp;
+                             </a>
+                             <abbr title="No description">BGP_NEIGHBOR[neighbor_ip]</abbr>
+                          </div>
+                       </td> 
+<td nowrap>list</td>
+                    <td nowrap></td>
+                    <td nowrap>config</td>
+                    <td></td>
+                    <td>current</td>
+                    <td nowrap>/sbnbr:sonic-bgp-neighbor/sbnbr:BGP_NEIGHBOR</td>
+                    </tr> 
+<tr id="7-3-4-30" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="Local ASN"> <em> local_asn </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="uint32
+">uint32</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sbnbr:sonic-bgp-neighbor/sbnbr:BGP_NEIGHBOR/sbnbr:local_asn</td</tr> 
+<tr id="7-3-4-31" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="Peer ASN"> <em> peer_asn </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="uint32
+">uint32</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sbnbr:sonic-bgp-neighbor/sbnbr:BGP_NEIGHBOR/sbnbr:peer_asn</td</tr> 
+<tr id="7-3-4-32" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="TTL"> <em> ebgp-multihop </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="uint32
+">uint32</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sbnbr:sonic-bgp-neighbor/sbnbr:BGP_NEIGHBOR/sbnbr:ebgp-multihop</td</tr> 
+<tr id="7-3-4-33" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="Neighbor description">  neighbor_ip </abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="inet:ipv4-address
+string
+ {pattern = (([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%[\p{N}\p{L}]+)?}">inet:ipv4-address</abbr></td>
+                       <td nowrap>config</td>
+                       <td></td>
+                       <td>current</td>
+                       <td nowrap>/sbnbr:sonic-bgp-neighbor/sbnbr:BGP_NEIGHBOR/sbnbr:neighbor_ip</td</tr> 
+<tr id="7-3-4-34" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="Neighbor information"> <em> description </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="string
+">string</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sbnbr:sonic-bgp-neighbor/sbnbr:BGP_NEIGHBOR/sbnbr:description</td</tr> 
+<tr id="10" class="a">
+                         <td id="p1">
+                            <div id="p2" class="tier1">
+                               <a href="#" id="p3"
+                                  onclick="toggleRows(this);return false;"
+                                  class="folder">&nbsp;
+                               </a>
+                               <font color=blue>sonic-common</font>
+                            </div>
+                         </td> 
+<td>module</td><td></td><td></td><td></td><td>
+                        </td></tr>
+<tr id="10-4" class="a">
+                       <td nowrap id="p4000">
+                          <div id="p5000" class="tier2">
+                             <a href="#" id="p6000"
+                                onclick="toggleRows(this);return false"
+                                class="folder">&nbsp;
+                             </a>
+                             <abbr title="No description">operation</abbr>
+                          </div>
+                       </td> 
+<td nowrap>container</td>
+                    <td nowrap></td>
+                    <td nowrap>config</td>
+                    <td></td>
+                    <td>current</td>
+                    <td nowrap>/sv:operation</td>
+                    </tr> 
+<tr id="10-4-5" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier3>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> operation </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="string
+">string</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sv:operation/sv:operation</td</tr> 
+<tr id="13" class="a">
+                         <td id="p1">
+                            <div id="p2" class="tier1">
+                               <a href="#" id="p3"
+                                  onclick="toggleRows(this);return false;"
+                                  class="folder">&nbsp;
+                               </a>
+                               <font color=blue>sonic-interface</font>
+                            </div>
+                         </td> 
+<td>module</td><td></td><td></td><td></td><td>
+                        </td></tr>
+<tr id="13-5" class="a">
+                       <td nowrap id="p4000">
+                          <div id="p5000" class="tier2">
+                             <a href="#" id="p6000"
+                                onclick="toggleRows(this);return false"
+                                class="folder">&nbsp;
+                             </a>
+                             <abbr title="No description">sonic-interface</abbr>
+                          </div>
+                       </td> 
+<td nowrap>container</td>
+                    <td nowrap></td>
+                    <td nowrap>config</td>
+                    <td></td>
+                    <td>current</td>
+                    <td nowrap>/sint:sonic-interface</td>
+                    </tr> 
+<tr id="13-5-6" class="a">
+                       <td nowrap id="p4000">
+                          <div id="p5000" class="tier3">
+                             <a href="#" id="p6000"
+                                onclick="toggleRows(this);return false"
+                                class="folder">&nbsp;
+                             </a>
+                             <abbr title="No description">INTERFACE[portname ip_prefix]</abbr>
+                          </div>
+                       </td> 
+<td nowrap>list</td>
+                    <td nowrap></td>
+                    <td nowrap>config</td>
+                    <td></td>
+                    <td>current</td>
+                    <td nowrap>/sint:sonic-interface/sint:INTERFACE</td>
+                    </tr> 
+<tr id="13-5-6-35" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description">  portname </abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="leafref
+ : /prt:sonic-port/prt:PORT/prt:ifname">leafref</abbr></td>
+                       <td nowrap>config</td>
+                       <td></td>
+                       <td>current</td>
+                       <td nowrap>/sint:sonic-interface/sint:INTERFACE/sint:portname</td</tr> 
+<tr id="13-5-6-36" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description">  ip_prefix </abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="inet:ip-prefix
+union
+{inet:ipv4-prefix, inet:ipv6-prefix}">inet:ip-prefix</abbr></td>
+                       <td nowrap>config</td>
+                       <td></td>
+                       <td>current</td>
+                       <td nowrap>/sint:sonic-interface/sint:INTERFACE/sint:ip_prefix</td</tr> 
+<tr id="16" class="a">
+                         <td id="p1">
+                            <div id="p2" class="tier1">
+                               <a href="#" id="p3"
+                                  onclick="toggleRows(this);return false;"
+                                  class="folder">&nbsp;
+                               </a>
+                               <font color=blue>sonic-mgmt-interface</font>
+                            </div>
+                         </td> 
+<td>module</td><td></td><td></td><td></td><td>
+                        </td></tr>
+<tr id="16-6" class="a">
+                       <td nowrap id="p4000">
+                          <div id="p5000" class="tier2">
+                             <a href="#" id="p6000"
+                                onclick="toggleRows(this);return false"
+                                class="folder">&nbsp;
+                             </a>
+                             <abbr title="No description">sonic-mgmt-interface</abbr>
+                          </div>
+                       </td> 
+<td nowrap>container</td>
+                    <td nowrap></td>
+                    <td nowrap>config</td>
+                    <td></td>
+                    <td>current</td>
+                    <td nowrap>/sint:sonic-mgmt-interface</td>
+                    </tr> 
+<tr id="16-6-7" class="a">
+                       <td nowrap id="p4000">
+                          <div id="p5000" class="tier3">
+                             <a href="#" id="p6000"
+                                onclick="toggleRows(this);return false"
+                                class="folder">&nbsp;
+                             </a>
+                             <abbr title="No description">MGMT_INTERFACE[portname ip_prefix]</abbr>
+                          </div>
+                       </td> 
+<td nowrap>list</td>
+                    <td nowrap></td>
+                    <td nowrap>config</td>
+                    <td></td>
+                    <td>current</td>
+                    <td nowrap>/sint:sonic-mgmt-interface/sint:MGMT_INTERFACE</td>
+                    </tr> 
+<tr id="16-6-7-37" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description">  portname </abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="leafref
+ : /mgmtprt:sonic-mgmt-port/mgmtprt:MGMT_PORT/mgmtprt:ifname">leafref</abbr></td>
+                       <td nowrap>config</td>
+                       <td></td>
+                       <td>current</td>
+                       <td nowrap>/sint:sonic-mgmt-interface/sint:MGMT_INTERFACE/sint:portname</td</tr> 
+<tr id="16-6-7-38" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description">  ip_prefix </abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="inet:ip-prefix
+union
+{inet:ipv4-prefix, inet:ipv6-prefix}">inet:ip-prefix</abbr></td>
+                       <td nowrap>config</td>
+                       <td></td>
+                       <td>current</td>
+                       <td nowrap>/sint:sonic-mgmt-interface/sint:MGMT_INTERFACE/sint:ip_prefix</td</tr> 
+<tr id="16-6-7-39" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> gwaddr </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="inet:ip-prefix
+union
+{inet:ipv4-prefix, inet:ipv6-prefix}">inet:ip-prefix</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sint:sonic-mgmt-interface/sint:MGMT_INTERFACE/sint:gwaddr</td</tr> 
+<tr id="19" class="a">
+                         <td id="p1">
+                            <div id="p2" class="tier1">
+                               <a href="#" id="p3"
+                                  onclick="toggleRows(this);return false;"
+                                  class="folder">&nbsp;
+                               </a>
+                               <font color=blue>sonic-mgmt-port</font>
+                            </div>
+                         </td> 
+<td>module</td><td></td><td></td><td></td><td>
+                        </td></tr>
+<tr id="19-7" class="a">
+                       <td nowrap id="p4000">
+                          <div id="p5000" class="tier2">
+                             <a href="#" id="p6000"
+                                onclick="toggleRows(this);return false"
+                                class="folder">&nbsp;
+                             </a>
+                             <abbr title="No description">sonic-mgmt-port</abbr>
+                          </div>
+                       </td> 
+<td nowrap>container</td>
+                    <td nowrap></td>
+                    <td nowrap>config</td>
+                    <td></td>
+                    <td>current</td>
+                    <td nowrap>/prt:sonic-mgmt-port</td>
+                    </tr> 
+<tr id="19-7-8" class="a">
+                       <td nowrap id="p4000">
+                          <div id="p5000" class="tier3">
+                             <a href="#" id="p6000"
+                                onclick="toggleRows(this);return false"
+                                class="folder">&nbsp;
+                             </a>
+                             <abbr title="No description">MGMT_PORT[ifname]</abbr>
+                          </div>
+                       </td> 
+<td nowrap>list</td>
+                    <td nowrap></td>
+                    <td nowrap>config</td>
+                    <td></td>
+                    <td>current</td>
+                    <td nowrap>/prt:sonic-mgmt-port/prt:MGMT_PORT</td>
+                    </tr> 
+<tr id="19-7-8-40" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description">  ifname </abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="string
+ {pattern = eth([1-3][0-9]{3}|[1-9][0-9]{2}|[1-9][0-9]|[0-9])}">string</abbr></td>
+                       <td nowrap>config</td>
+                       <td></td>
+                       <td>current</td>
+                       <td nowrap>/prt:sonic-mgmt-port/prt:MGMT_PORT/prt:ifname</td</tr> 
+<tr id="19-7-8-41" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> speed </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="uint64
+">uint64</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/prt:sonic-mgmt-port/prt:MGMT_PORT/prt:speed</td</tr> 
+<tr id="19-7-8-42" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> autoneg </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="boolean
+">boolean</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/prt:sonic-mgmt-port/prt:MGMT_PORT/prt:autoneg</td</tr> 
+<tr id="19-7-8-43" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> alias </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="string
+">string</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/prt:sonic-mgmt-port/prt:MGMT_PORT/prt:alias</td</tr> 
+<tr id="19-7-8-44" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> description </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="string
+">string</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/prt:sonic-mgmt-port/prt:MGMT_PORT/prt:description</td</tr> 
+<tr id="19-7-8-45" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> mtu </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="uint32
+">uint32</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/prt:sonic-mgmt-port/prt:MGMT_PORT/prt:mtu</td</tr> 
+<tr id="19-7-8-46" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> admin_status </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="scommon:admin-status
+enumeration
+ : {up,down,}">scommon:admin-status</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/prt:sonic-mgmt-port/prt:MGMT_PORT/prt:admin_status</td</tr> 
+<tr id="22" class="a">
+                         <td id="p1">
+                            <div id="p2" class="tier1">
+                               <a href="#" id="p3"
+                                  onclick="toggleRows(this);return false;"
+                                  class="folder">&nbsp;
+                               </a>
+                               <font color=blue>sonic-mirror-session</font>
+                            </div>
+                         </td> 
+<td>module</td><td></td><td></td><td></td><td>
+                        </td></tr>
+<tr id="22-8" class="a">
+                       <td nowrap id="p4000">
+                          <div id="p5000" class="tier2">
+                             <a href="#" id="p6000"
+                                onclick="toggleRows(this);return false"
+                                class="folder">&nbsp;
+                             </a>
+                             <abbr title="No description">sonic-mirror-session</abbr>
+                          </div>
+                       </td> 
+<td nowrap>container</td>
+                    <td nowrap></td>
+                    <td nowrap>config</td>
+                    <td></td>
+                    <td>current</td>
+                    <td nowrap>/sms:sonic-mirror-session</td>
+                    </tr> 
+<tr id="22-8-9" class="a">
+                       <td nowrap id="p4000">
+                          <div id="p5000" class="tier3">
+                             <a href="#" id="p6000"
+                                onclick="toggleRows(this);return false"
+                                class="folder">&nbsp;
+                             </a>
+                             <abbr title="No description">MIRROR_SESSION[name]</abbr>
+                          </div>
+                       </td> 
+<td nowrap>list</td>
+                    <td nowrap></td>
+                    <td nowrap>config</td>
+                    <td></td>
+                    <td>current</td>
+                    <td nowrap>/sms:sonic-mirror-session/sms:MIRROR_SESSION</td>
+                    </tr> 
+<tr id="22-8-9-47" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description">  name </abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="string
+">string</abbr></td>
+                       <td nowrap>config</td>
+                       <td></td>
+                       <td>current</td>
+                       <td nowrap>/sms:sonic-mirror-session/sms:MIRROR_SESSION/sms:name</td</tr> 
+<tr id="22-8-9-48" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> src_ip </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="inet:ipv4-address
+string
+ {pattern = (([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%[\p{N}\p{L}]+)?}">inet:ipv4-address</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sms:sonic-mirror-session/sms:MIRROR_SESSION/sms:src_ip</td</tr> 
+<tr id="22-8-9-49" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> dst_ip </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="inet:ipv4-address
+string
+ {pattern = (([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%[\p{N}\p{L}]+)?}">inet:ipv4-address</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sms:sonic-mirror-session/sms:MIRROR_SESSION/sms:dst_ip</td</tr> 
+<tr id="22-8-9-50" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> gre_type </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="string
+">string</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sms:sonic-mirror-session/sms:MIRROR_SESSION/sms:gre_type</td</tr> 
+<tr id="22-8-9-51" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> dscp </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="uint8
+">uint8</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sms:sonic-mirror-session/sms:MIRROR_SESSION/sms:dscp</td</tr> 
+<tr id="22-8-9-52" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> ttl </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="uint8
+">uint8</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sms:sonic-mirror-session/sms:MIRROR_SESSION/sms:ttl</td</tr> 
+<tr id="22-8-9-53" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> queue </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="uint8
+">uint8</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/sms:sonic-mirror-session/sms:MIRROR_SESSION/sms:queue</td</tr> 
+<tr id="25" class="a">
+                         <td id="p1">
+                            <div id="p2" class="tier1">
+                               <a href="#" id="p3"
+                                  onclick="toggleRows(this);return false;"
+                                  class="folder">&nbsp;
+                               </a>
+                               <font color=blue>sonic-port</font>
+                            </div>
+                         </td> 
+<td>module</td><td></td><td></td><td></td><td>
+                        </td></tr>
+<tr id="25-9" class="a">
+                       <td nowrap id="p4000">
+                          <div id="p5000" class="tier2">
+                             <a href="#" id="p6000"
+                                onclick="toggleRows(this);return false"
+                                class="folder">&nbsp;
+                             </a>
+                             <abbr title="No description">sonic-port</abbr>
+                          </div>
+                       </td> 
+<td nowrap>container</td>
+                    <td nowrap></td>
+                    <td nowrap>config</td>
+                    <td></td>
+                    <td>current</td>
+                    <td nowrap>/prt:sonic-port</td>
+                    </tr> 
+<tr id="25-9-10" class="a">
+                       <td nowrap id="p4000">
+                          <div id="p5000" class="tier3">
+                             <a href="#" id="p6000"
+                                onclick="toggleRows(this);return false"
+                                class="folder">&nbsp;
+                             </a>
+                             <abbr title="No description">PORT[ifname]</abbr>
+                          </div>
+                       </td> 
+<td nowrap>list</td>
+                    <td nowrap></td>
+                    <td nowrap>config</td>
+                    <td></td>
+                    <td>current</td>
+                    <td nowrap>/prt:sonic-port/prt:PORT</td>
+                    </tr> 
+<tr id="25-9-10-54" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description">  ifname </abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="string
+ {pattern = Ethernet([1-3][0-9]{3}|[1-9][0-9]{2}|[1-9][0-9]|[0-9])}">string</abbr></td>
+                       <td nowrap>config</td>
+                       <td></td>
+                       <td>current</td>
+                       <td nowrap>/prt:sonic-port/prt:PORT/prt:ifname</td</tr> 
+<tr id="25-9-10-55" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> index </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="uint16
+">uint16</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/prt:sonic-port/prt:PORT/prt:index</td</tr> 
+<tr id="25-9-10-56" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> speed </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="uint64
+">uint64</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/prt:sonic-port/prt:PORT/prt:speed</td</tr> 
+<tr id="25-9-10-57" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> valid_speeds </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="string
+">string</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/prt:sonic-port/prt:PORT/prt:valid_speeds</td</tr> 
+<tr id="25-9-10-58" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> alias </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="string
+">string</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/prt:sonic-port/prt:PORT/prt:alias</td</tr> 
+<tr id="25-9-10-59" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> description </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="string
+">string</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/prt:sonic-port/prt:PORT/prt:description</td</tr> 
+<tr id="25-9-10-60" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> mtu </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="uint32
+ [1312..9216]">uint32</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/prt:sonic-port/prt:PORT/prt:mtu</td</tr> 
+<tr id="25-9-10-61" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> lanes </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="string
+">string</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/prt:sonic-port/prt:PORT/prt:lanes</td</tr> 
+<tr id="25-9-10-62" class="a">
+                       <td nowrap>
+                          <div id=9999 class=tier4>
+                             <a class="leaf">&nbsp;</a>
+                             <abbr title="No description"> <em> admin_status </em></abbr>
+                          </div>
+                       </td>
+                       <td>leaf</td>
+                       <td nowrap><abbr title="scommon:admin-status
+enumeration
+ : {up,down,}">scommon:admin-status</abbr></td>
+                       <td nowrap>config</td>
+                       <td>?</td>
+                       <td>current</td>
+                       <td nowrap>/prt:sonic-port/prt:PORT/prt:admin_status</td</tr> 
+
+</table>
+</div>
+</body>
+</html>
+
