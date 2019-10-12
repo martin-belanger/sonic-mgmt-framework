@@ -57,7 +57,7 @@ module sonic-device-metadata {
 
 				leaf bgp_asn {
 					type leafref {
-						path "/sbn:sonic-bgp-neighbor/sbn:BGP_NEIGHBOR/sbn:BGP_NEIGHBOR_LIST/sbn:asn";
+						path "/sbn:sonic-bgp-neighbor/sbn:BGP_NEIGHBOR/sbn:BGP_NEIGHBOR_LIST/sbn:local_asn";
 					}
 				}
 
