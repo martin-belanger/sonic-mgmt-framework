@@ -1,6 +1,21 @@
-## Open Api Spec output plugin(swagger 2.0)
-## Author: Mohammed Faraaz C
-## Company: Broadcom Inc.
+################################################################################
+#                                                                              #
+#  Copyright 2019 Broadcom. The term Broadcom refers to Broadcom Inc. and/or   #
+#  its subsidiaries.                                                           #
+#                                                                              #
+#  Licensed under the Apache License, Version 2.0 (the "License");             #
+#  you may not use this file except in compliance with the License.            #
+#  You may obtain a copy of the License at                                     #
+#                                                                              #
+#     http://www.apache.org/licenses/LICENSE-2.0                               #
+#                                                                              #
+#  Unless required by applicable law or agreed to in writing, software         #
+#  distributed under the License is distributed on an "AS IS" BASIS,           #
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.    #
+#  See the License for the specific language governing permissions and         #
+#  limitations under the License.                                              #
+#                                                                              #
+################################################################################
 
 import optparse
 import sys
@@ -220,7 +235,7 @@ class OpenApiPlugin(plugin.PyangPlugin):
 
 def walk_module(module):
     for child in module.i_children:
-        walk_child(child, None)
+        walk_child(child)
 
 def add_swagger_tag(module):
     if module.i_modulename not in moduleDict:
@@ -482,13 +497,13 @@ def walk_child(child):
 
         if  child.keyword == "list":
             listMetaData = copy.deepcopy(metadata)
-            walk_child_for_list_base(child,actXpath,pathstr, listMetaData, defName, customName)
+            walk_child_for_list_base(child,actXpath,pathstr, listMetaData, defName)
 
     if hasattr(child, 'i_children'):
         for ch in child.i_children:
-            walk_child(ch, customName)
+            walk_child(ch)
 
-def walk_child_for_list_base(child, actXpath, pathstr, metadata, nonBaseDefName=None, customParentName=None):
+def walk_child_for_list_base(child, actXpath, pathstr, metadata, nonBaseDefName=None):
 
     payload = OrderedDict()
     pathstrList = pathstr.split('/')
@@ -950,5 +965,5 @@ def isUriKeyInPayload(stmt, keyNodesList):
         _iterate(stmt)
     except Abort:
         result = True
-    
+
     return result

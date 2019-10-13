@@ -60,11 +60,11 @@ CERTGEN_BIN = $(BUILD_DIR)/rest_server/generate_cert
 all: build-deps go-deps go-redis-patch go-patch translib rest-server cli
 
 build-deps:
-	mkdir -p $(BUILD_DIR)
+	mkdir -p $(BUILD_DIR)/gopkgs
 
-go-deps: $(BUILD_DIR)/.godeps_done
+go-deps: $(BUILD_DIR)/gopkgs/.done
 
-$(BUILD_DIR)/.godeps_done:
+$(BUILD_DIR)/gopkgs/.done:
 	$(GO) get -v $(GO_DEPS_LIST)
 	touch $@
 
