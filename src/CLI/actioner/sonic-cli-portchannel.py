@@ -94,13 +94,7 @@ def run(func, args):
                         memlst = api_response_members['sonic-portchannel:LAG_MEMBER_TABLE']['LAG_MEMBER_TABLE_LIST']                   
                     for pc_dict in laglst:
                         pc_dict['members']=[]
-                        if pc_dict['name'] == "lacp":
-                            pc_dict['name'] = "DYNAMIC"
-                        if pc_dict['oper_status'] == "down":
-                            pc_dict['oper_status'] = "D"
-                        else:
-                            pc_dict['oper_status'] = "U"
-                        
+                        pc_dict['type']="Eth"
                         for mem_dict in memlst:
                             if mem_dict['name'] == pc_dict['lagname']:
         	                keypath = [mem_dict['ifname']]

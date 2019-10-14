@@ -38,6 +38,8 @@ const (
 	SPEED        = "speed"
 	DESC         = "description"
 	OPER_STATUS  = "oper_status"
+	NAME         = "name"
+	ACTIVE       = "active"
 )
 
 type Table int
@@ -64,7 +66,6 @@ func (app *IntfApp) translateUpdateIntfConfig(ifKey *string, intf *ocbinds.Openc
                     }
             }
         }
-
         log.Info("Writing to db for ", *ifKey)
         app.ifTableMap[*ifKey] = dbEntry{op: opUpdate, entry: *curr}
 }
@@ -290,6 +291,77 @@ func (app *IntfApp) getSpecificIfVlanAttr(targetUriPath *string, ifKey *string, 
 	return false, nil
 }
 
+func (app *IntfApp) getSpecificIfLagAttr(d *db.DB, targetUriPath *string, ifKey *string, oc_val *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Aggregation_State) (bool, error) {
+    switch *targetUriPath {
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-aggregate:aggregation/state/min-links":
+            curr, err := d.GetEntry(app.lagD.lagTs, db.Key{Comp: []string{*ifKey}})
+            if err != nil {
+                    errStr := "Failed to Get PortChannel details"
+                    return true, errors.New(errStr)
+            }
+            if val, ok := curr.Field["min_links"]; ok {
+                log.Info("curr.Field['min_links']", val)
+                min_links, err := strconv.Atoi(curr.Field["min_links"])
+                if err != nil {
+                        errStr := "Conversion of string to int failed"
+                        return true, errors.New(errStr)
+                }
+                links := uint16(min_links)
+                oc_val.MinLinks = &links
+            } else {
+                log.Info("Minlinks set to 0 (dafault value)")
+                links := uint16(0)
+                oc_val.MinLinks = &links
+            }
+            return true, nil
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-aggregate:aggregation/state/member":
+            lagKeys, err := d.GetKeys(app.lagD.lagMemberTs)
+            if err != nil {
+                log.Info("No entries in PORTCHANNEL_MEMBER TABLE")
+                return true, err
+            }
+            var flag bool = false
+            for i, _ := range lagKeys {
+                if *ifKey == lagKeys[i].Get(0) {
+                    log.Info("Found lagKey")
+                    flag = true
+                    ethName := lagKeys[i].Get(1)
+                    oc_val.Member = append(oc_val.Member, ethName)
+                }
+            }
+            if (flag == false){
+                log.Info("Given PortChannel has no members")
+                errStr := "Given PortChannel has no members"
+                return true, errors.New(errStr)
+            }
+            return true, nil
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-aggregate:aggregation/state/dell-intf-augments:fallback":
+            curr, err := d.GetEntry(app.lagD.lagTs, db.Key{Comp: []string{*ifKey}})
+            if err != nil {
+                    errStr := "Failed to Get PortChannel details"
+                    return true, errors.New(errStr)
+            }
+            if val, ok := curr.Field["fallback"]; ok {
+                log.Info("curr.Field['fallback']", val)
+                fallbackVal, err := strconv.ParseBool(val)
+                if err != nil {
+                        errStr := "Conversion of string to bool failed"
+                        return true, errors.New(errStr)
+                }
+                oc_val.Fallback = &fallbackVal
+            } else {
+                log.Info("Fallback set to False, default value")
+                fallbackVal := false
+                oc_val.Fallback = &fallbackVal
+            }
+            return true, nil
+
+    default:
+            log.Infof(*targetUriPath + " - Not an supported Get attribute")
+    }
+    return false, nil
+}
+
 func (app *IntfApp) getSpecificCounterAttr(targetUriPath *string, ifKey *string, counter_val *ocbinds.OpenconfigInterfaces_Interfaces_Interface_State_Counters) (bool, error) {
 
 	var e error
@@ -498,6 +570,19 @@ func (app *IntfApp) processGetSpecificAttr(targetUriPath *string, ifKey *string)
 		}
 		return ok, &(GetResponse{Payload: payload}), err
 	}
+	/*Check if the request is for a specific attribute in Interfaces Aggregation container*/
+	ocEthernetLagStateVal := &ocbinds.OpenconfigInterfaces_Interfaces_Interface_Aggregation_State{}
+	ok, e = app.getSpecificIfLagAttr(app.configDB, targetUriPath, ifKey, ocEthernetLagStateVal)
+	if ok {
+		if e != nil {
+			return ok, &(GetResponse{Payload: payload, ErrSrc: AppErr}), e
+		}
+		payload, err = dumpIetfJson(ocEthernetLagStateVal, false)
+		if err != nil {
+			return ok, &(GetResponse{Payload: payload, ErrSrc: AppErr}), err
+		}
+		return ok, &(GetResponse{Payload: payload}), err
+	}
 	return ok, &(GetResponse{Payload: payload}), err
 }
 
@@ -586,7 +671,6 @@ func (app *IntfApp) convertDBIfVlanListInfoToInternal(dbCl *db.DB, ts *db.TableS
 func (app *IntfApp) convertDBIntfInfoToInternal(dbCl *db.DB, ts *db.TableSpec, ifName *string, ifKey db.Key) error {
 
 	var err error
-
 	/* Fetching DB data for a specific Interface */
 	if len(*ifName) > 0 {
 		log.Info("Updating Interface info from APP-DB to Internal DS for Interface name : ", *ifName)
@@ -790,6 +874,10 @@ func (app *IntfApp) convertInternalToOCIntfAttrInfo(ifName *string, ifInfo *ocbi
 					*ifIdx = uint32(ifIdxNum)
 					ifInfo.State.Ifindex = ifIdx
 				}
+                        case ACTIVE:
+				//ifStr := ifData.Get(ifAttr)
+                        case NAME:
+				//ifStr := ifData.Get(ifAttr)
 			default:
 				log.Info("Not a valid attribute!")
 			}
@@ -913,7 +1001,7 @@ func (app *IntfApp) convertInternalToOCIntfIPAttrInfo(ifName *string, ifInfo *oc
 
 func (app *IntfApp) convertInternalToOCPortStatInfo(ifName *string, ifInfo *ocbinds.OpenconfigInterfaces_Interfaces_Interface) {
 	if len(app.intfD.portStatMap) == 0 {
-		log.Errorf("Port stat info not present for interface : %s", *ifName)
+		//log.Info("Port stat info not present for interface : %s", *ifName)
 		return
 	}
 	if ifInfo.State == nil || ifInfo.State.Counters == nil {
@@ -1062,6 +1150,10 @@ func (app *IntfApp) processGetSpecificIntf(dbs [db.MaxDB]*db.DB, targetUriPath *
 				if err != nil {
 					return GetResponse{Payload: payload, ErrSrc: AppErr}, err
 				}
+				ok, resp, err := app.processGetSpecificAttr(targetUriPath, &ifKey)
+				if ok {
+					return *resp, err
+                                }
 			}
 
 			ifInfo := intfObj.Interface[ifKey]

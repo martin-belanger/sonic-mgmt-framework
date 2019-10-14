@@ -83,26 +83,27 @@ type intfData struct {
 }
 
 type IntfApp struct {
-	path       *PathInfo
-	reqData    []byte
-	ygotRoot   *ygot.GoStruct
-	ygotTarget *interface{}
+    path       *PathInfo
+    reqData    []byte
+    ygotRoot   *ygot.GoStruct
+    ygotTarget *interface{}
 
-	respJSON  interface{}
-	allIpKeys []db.Key
+    respJSON  interface{}
+    allIpKeys []db.Key
 
-	appDB      *db.DB
-	countersDB *db.DB
+    appDB      *db.DB
+    countersDB *db.DB
+    configDB   *db.DB
 
-	intfType ifType
-	mode     intfModeCfgAlone
+    intfType ifType
+    mode     intfModeCfgAlone
 
-	intfD intfData
-	vlanD vlanData
-	lagD lagData
+    intfD intfData
+    vlanD vlanData
+    lagD lagData
 
-	ifTableMap map[string]dbEntry
-	ifIPTableMap   map[string]map[string]dbEntry
+    ifTableMap map[string]dbEntry
+    ifIPTableMap   map[string]map[string]dbEntry
 }
 
 func init() {
@@ -400,22 +401,23 @@ func (app *IntfApp) processDelete(d *db.DB) (SetResponse, error) {
 
 func (app *IntfApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 
-	var err error
-	var payload []byte
-	pathInfo := app.path
+    var err error
+    var payload []byte
+    pathInfo := app.path
 
-	log.Infof("Received GET for path %s; template: %s vars=%v", pathInfo.Path, pathInfo.Template, pathInfo.Vars)
-	app.appDB = dbs[db.ApplDB]
-	app.countersDB = dbs[db.CountersDB]
+    log.Infof("Received GET for path %s; template: %s vars=%v", pathInfo.Path, pathInfo.Template, pathInfo.Vars)
+    app.appDB = dbs[db.ApplDB]
+    app.countersDB = dbs[db.CountersDB]
+    app.configDB = dbs[db.ConfigDB]
 
-	targetUriPath, err := getYangPathFromUri(app.path.Path)
-	log.Info("URI Path = ", targetUriPath)
+    targetUriPath, err := getYangPathFromUri(app.path.Path)
+    log.Info("URI Path = ", targetUriPath)
 
-	if isSubtreeRequest(targetUriPath, "/openconfig-interfaces:interfaces/interface") {
-		return app.processGetSpecificIntf(dbs, &targetUriPath)
-	}
-	if isSubtreeRequest(targetUriPath, "/openconfig-interfaces:interfaces") {
-		return app.processGetAllInterfaces(dbs)
-	}
-	return GetResponse{Payload: payload}, err
+    if isSubtreeRequest(targetUriPath, "/openconfig-interfaces:interfaces/interface") {
+            return app.processGetSpecificIntf(dbs, &targetUriPath)
+    }
+    if isSubtreeRequest(targetUriPath, "/openconfig-interfaces:interfaces") {
+            return app.processGetAllInterfaces(dbs)
+    }
+    return GetResponse{Payload: payload}, err
 }
