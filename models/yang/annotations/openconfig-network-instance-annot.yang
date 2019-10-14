@@ -27,6 +27,13 @@ module openconfig-network-instance-annot {
     import openconfig-segment-routing { prefix oc-sr; }
     import openconfig-aft { prefix oc-aft; }
 
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols {
+		deviate add {
+			sonic-ext:db-name "CONFIG_DB";
+            sonic-ext:subtree-transformer "protocols_table_transformer";
+		}
+    }
+
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-bgp:bgp/oc-bgp:global {
 		deviate add {
             sonic-ext:db-name "CONFIG_DB";

@@ -16,6 +16,7 @@ func init () {
     XlateFuncBind("DbToYang_bgp_allow_multiple_as_xfmr", DbToYang_bgp_allow_multiple_as_xfmr)
     XlateFuncBind("YangToDb_bgp_graceful_restart_status_xfmr", YangToDb_bgp_graceful_restart_status_xfmr)
     XlateFuncBind("DbToYang_bgp_graceful_restart_status_xfmr", DbToYang_bgp_graceful_restart_status_xfmr)
+	XlateFuncBind("DbToYang_protocols_table_transformer", DbToYang_protocols_table_transformer)
 }
 
 var YangToDb_bgp_gbl_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
@@ -167,3 +168,13 @@ var DbToYang_bgp_graceful_restart_status_xfmr FieldXfmrDbtoYang = func(inParams 
     return result, err
 }
 
+var DbToYang_protocols_table_transformer SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
+	var err error
+
+	//    intfsObj := getIntfsRoot(inParams.ygRoot)
+	//    pathInfo := NewPathInfo(inParams.uri)
+
+	log.Info("JJ DbToYang_protocols - uri", inParams.uri)
+
+	return err
+}
