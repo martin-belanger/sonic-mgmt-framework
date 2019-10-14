@@ -167,7 +167,3 @@ var DbToYang_bgp_graceful_restart_status_xfmr FieldXfmrDbtoYang = func(inParams 
     return result, err
 }
 
-
-
-
-

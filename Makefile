@@ -47,9 +47,10 @@ GO_DEPS_LIST = github.com/gorilla/mux \
                github.com/pkg/profile \
                gopkg.in/go-playground/validator.v9 \
                golang.org/x/crypto/ssh \
-	       github.com/antchfx/jsonquery \
-	       github.com/antchfx/xmlquery \
-	       github.com/philopon/go-toposort
+               github.com/antchfx/jsonquery \
+               github.com/antchfx/xmlquery \
+               github.com/facette/natsort \
+	             github.com/philopon/go-toposort
 
 
 REST_BIN = $(BUILD_DIR)/rest_server/main
@@ -59,21 +60,22 @@ CERTGEN_BIN = $(BUILD_DIR)/rest_server/generate_cert
 all: build-deps go-deps go-redis-patch go-patch translib rest-server cli
 
 build-deps:
-	mkdir -p $(BUILD_DIR)
+	mkdir -p $(BUILD_DIR)/gopkgs
 
-go-deps: $(GO_DEPS_LIST)
+go-deps: $(BUILD_DIR)/gopkgs/.done
+
+$(BUILD_DIR)/gopkgs/.done:
+	$(GO) get -v $(GO_DEPS_LIST)
+	touch $@
 
 go-redis-patch: go-deps
 	cd $(BUILD_GOPATH)/src/github.com/go-redis/redis; git checkout d19aba07b47683ef19378c4a4d43959672b7cec8 2>/dev/null ; true; \
 $(GO) install -v -gcflags "-N -l" $(BUILD_GOPATH)/src/github.com/go-redis/redis
 
-$(GO_DEPS_LIST):
-	$(GO) get -v $@
-
 cli: rest-server
 	$(MAKE) -C src/CLI
 
-cvl: go-deps
+cvl: go-deps go-patch go-redis-patch
 	$(MAKE) -C src/cvl
 	$(MAKE) -C src/cvl/schema
 	$(MAKE) -C src/cvl/testdata/schema
@@ -109,12 +111,13 @@ cp $(TOPDIR)/ygot-modified-files/schema.go $(BUILD_GOPATH)/src/github.com/openco
 cp $(TOPDIR)/ygot-modified-files/unmarshal.go $(BUILD_GOPATH)/src/github.com/openconfig/ygot/ytypes/unmarshal.go; \
 cp $(TOPDIR)/ygot-modified-files/validate.go $(BUILD_GOPATH)/src/github.com/openconfig/ygot/ytypes/validate.go; \
 cp $(TOPDIR)/ygot-modified-files/reflect.go $(BUILD_GOPATH)/src/github.com/openconfig/ygot/ytypes/../util/reflect.go; \
+cp $(TOPDIR)/ygot-modified-files/string_type.go $(BUILD_GOPATH)/src/github.com/openconfig/ygot/ytypes/string_type.go; \
 cp $(TOPDIR)/goyang-modified-files/README.md $(BUILD_GOPATH)/src/github.com/openconfig/goyang/README.md; \
 cp $(TOPDIR)/goyang-modified-files/yang.go $(BUILD_GOPATH)/src/github.com/openconfig/goyang/yang.go; \
 cp $(TOPDIR)/goyang-modified-files/annotate.go $(BUILD_GOPATH)/src/github.com/openconfig/goyang/annotate.go; \
 cp $(TOPDIR)/goyang-modified-files/entry.go $(BUILD_GOPATH)/src/github.com/openconfig/goyang/pkg/yang/entry.go; \
-$(GO) install -v -gcflags "-N -l" $(BUILD_GOPATH)/src/github.com/openconfig/ygot/ygot; \
-$(GO) install -v -gcflags "-N -l" $(BUILD_GOPATH)/src/github.com/openconfig/goyang
+$(GO) install -v -gcflags "-N -l" $(BUILD_GOPATH)/src/github.com/openconfig/goyang; \
+$(GO) install -v -gcflags "-N -l" $(BUILD_GOPATH)/src/github.com/openconfig/ygot/ygot
 
 install:
 	$(INSTALL) -D $(REST_BIN) $(DESTDIR)/usr/sbin/rest_server

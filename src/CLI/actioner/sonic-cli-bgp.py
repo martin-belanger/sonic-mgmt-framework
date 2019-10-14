@@ -46,7 +46,9 @@ def generate_body(func, args):
     body = None
     # Get the rules of all ACL table entries.
     if func.__name__ == 'patch_openconfig_network_instance_network_instances_network_instance_config_router_id':
-	    keypath = [args[0], 0]
+        keypath = [args[0], 0]
+    elif func.__name__ == 'patch_openconfig_network_instance_network_instances_network_instance_protocols_protocol_bgp_global_config_router_id':
+        keypath = [args[0], args[1], args[2], args[3]]
     else:
        body = {}
 
@@ -64,6 +66,29 @@ def run(func, args):
     if func.__name__ == 'patch_openconfig_network_instance_network_instances_network_instance_config_router_id':
         print args[0], args[1], args[2], args[3]
         return
+
+    try:
+        # Temporary code for #show vlan command with dummy data
+        if body is not None:
+           api_response = getattr(aa,func.__name__)(*keypath, body=body)
+        else :
+           api_response = getattr(aa,func.__name__)(*keypath)
+
+        if api_response is None:
+            print ("Success")
+        else:
+            # Get Command Output
+            api_response = aa.api_client.sanitize_for_serialization(api_response)
+
+            if api_response is None:
+                print("Failed")
+            else:
+                print api_response
+    except ApiException as e:
+        print("Exception when calling OpenconfigInterfacesApi->%s : %s\n" %(func.__name__, e))
+        if e.body != "":
+            body = json.loads(e.body)
+            print body
 
 if __name__ == '__main__':
 
