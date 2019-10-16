@@ -23,9 +23,9 @@ SRC_FILES=$(shell find . -name '*.go' | grep -v '_test.go' | grep -v '/tests/')
 TEST_FILES=$(wildcard *_test.go)
 TOP_DIR := $(abspath ../..)
 GOFLAGS:=
-BUILD_DIR:=build
+BUILD_DIR:=$(TOP_DIR)/build/cvl
 GO_DOWNLOAD_PATH:=$(BUILD_GOPATH)
-CVL_PKG=$(TOP_DIR)/pkg/linux_amd64/cvl.a
+CVL_PKG=$(BUILD_DIR)/pkg/linux_amd64/cvl.a
 
 CVL_TEST_DIR = $(TOP_DIR)/build/tests/cvl
 CVL_TEST_BIN = $(CVL_TEST_DIR)/cvl.test
@@ -51,11 +51,12 @@ $(BUILD_DIR)/.deps:
 	touch $@
 
 $(CVL_PKG):
-	@echo "Building $@"
+	@echo "JJ Building $@"
 	GOPATH=$(GOPATH) $(GO) build -v $(GOFLAGS) cvl
 	GOPATH=$(GOPATH) $(GO) install cvl
 
 $(CVL_TEST_BIN): $(TEST_FILES) $(SRC_FILES)
+	@echo ".deps=" $(BUILD_DIR)
 	GOPATH=$(GOPATH) $(GO) test -c -cover -coverpkg=cvl,cvl/internal/util,cvl/internal/yparser cvl -o $@
 	cp -r testdata $(@D)/
 

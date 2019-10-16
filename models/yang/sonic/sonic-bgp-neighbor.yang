@@ -26,8 +26,8 @@ module sonic-bgp-neighbor {
 	}
 
 	container sonic-bgp-neighbor {
-
-		list BGP_NEIGHBOR {
+      container BGP_NEIGHBOR {
+		list BGP_NEIGHBOR_LIST {
 			key "neighbor_ip";
 
 			leaf local_asn {
@@ -55,5 +55,6 @@ module sonic-bgp-neighbor {
                 description "Neighbor information";
 			}
         }
+      }
     }
 }

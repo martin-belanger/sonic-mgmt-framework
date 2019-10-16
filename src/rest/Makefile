@@ -22,7 +22,7 @@ ABS_TOPDIR ?= $(abspath $(TOPDIR))
 BUILD_DIR  ?= $(TOPDIR)/build
 
 GO     ?= go
-GOPATH ?= $(ABS_TOPDIR)/gopkgs:$(ABS_TOPDIR):$(shell $(GO) env GOPATH)
+GOPATH ?= $(BUILD_GOPATH):$(ABS_TOPDIR):$(shell $(GO) env GOPATH)
 GOROOT ?= $(shell $(GO) env GOROOT)
 
 

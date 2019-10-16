@@ -24,7 +24,7 @@ BUILD_DIR := $(TOPDIR)/build
 export TOPDIR
 
 ifeq ($(BUILD_GOPATH),)
-export BUILD_GOPATH=$(TOPDIR)/gopkgs
+export BUILD_GOPATH=$(TOPDIR)/build/gopkgs
 endif
 
 export GOPATH=$(BUILD_GOPATH):$(TOPDIR)
@@ -60,16 +60,17 @@ CERTGEN_BIN = $(BUILD_DIR)/rest_server/generate_cert
 all: build-deps go-deps go-redis-patch go-patch translib rest-server cli
 
 build-deps:
-	mkdir -p $(BUILD_DIR)
+	mkdir -p $(BUILD_DIR)/gopkgs
 
-go-deps: $(GO_DEPS_LIST)
+go-deps: $(BUILD_DIR)/gopkgs/.done
+
+$(BUILD_DIR)/gopkgs/.done:
+	$(GO) get -v $(GO_DEPS_LIST)
+	touch $@
 
 go-redis-patch: go-deps
 	cd $(BUILD_GOPATH)/src/github.com/go-redis/redis; git checkout d19aba07b47683ef19378c4a4d43959672b7cec8 2>/dev/null ; true; \
 $(GO) install -v -gcflags "-N -l" $(BUILD_GOPATH)/src/github.com/go-redis/redis
-
-$(GO_DEPS_LIST):
-	$(GO) get -v $@
 
 cli: rest-server
 	$(MAKE) -C src/CLI
@@ -135,6 +136,7 @@ install:
 	cp -rf $(TOPDIR)/build/rest_server/dist/ui/ $(DESTDIR)/rest_ui/
 	cp -rf $(TOPDIR)/build/cli $(DESTDIR)/usr/sbin/
 	cp -rf $(TOPDIR)/build/swagger_client_py/ $(DESTDIR)/usr/sbin/lib/
+	rsync -a --exclude="test" --exclude="docs" build/swagger_client_py $(DESTDIR)/usr/sbin/lib/swagger_client_py
 	cp -rf $(TOPDIR)/src/cvl/conf/cvl_cfg.json $(DESTDIR)/usr/sbin/cvl_cfg.json
 
 ifeq ($(SONIC_COVERAGE_ON),y)
