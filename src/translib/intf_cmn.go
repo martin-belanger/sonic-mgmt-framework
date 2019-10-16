@@ -50,139 +50,136 @@ const (
 )
 
 func (app *IntfApp) translateUpdateIntfConfig(ifKey *string, intf *ocbinds.OpenconfigInterfaces_Interfaces_Interface, curr *db.Value) {
-        /*if intf.Config == nil {
-                return
-        }*/
-        if intf.Config != nil {
-            if intf.Config.Description != nil {
-                    curr.Field["description"] = *intf.Config.Description
-            } else if intf.Config.Mtu != nil {
-                    curr.Field["mtu"] = strconv.Itoa(int(*intf.Config.Mtu))
-            } else if intf.Config.Enabled != nil {
-                    if *intf.Config.Enabled == true {
-                            curr.Field["admin_status"] = "up"
-                    } else {
-                            curr.Field["admin_status"] = "down"
-                    }
+    if intf.Config != nil {
+        if intf.Config.Description != nil {
+            curr.Field["description"] = *intf.Config.Description
+        } else if intf.Config.Mtu != nil {
+            curr.Field["mtu"] = strconv.Itoa(int(*intf.Config.Mtu))
+        } else if intf.Config.Enabled != nil {
+            if *intf.Config.Enabled == true {
+                    curr.Field["admin_status"] = "up"
+            } else {
+                    curr.Field["admin_status"] = "down"
             }
         }
-        log.Info("Writing to db for ", *ifKey)
-        app.ifTableMap[*ifKey] = dbEntry{op: opUpdate, entry: *curr}
+    }
+    log.Info("Writing to db for ", *ifKey)
+    app.ifTableMap[*ifKey] = dbEntry{op: opUpdate, entry: *curr}
 }
 
 /* Handling IP address updates for given interface */
 func (app *IntfApp) translateUpdateIntfSubInterfaces(d *db.DB, ifKey *string, intf *ocbinds.OpenconfigInterfaces_Interfaces_Interface) error {
-	var err error
-	if intf.Subinterfaces == nil {
-		return err
-	}
-	subIf := intf.Subinterfaces.Subinterface[0]
-	if subIf != nil {
-		if subIf.Ipv4 != nil && subIf.Ipv4.Addresses != nil {
-			for ip, _ := range subIf.Ipv4.Addresses.Address {
-				addr := subIf.Ipv4.Addresses.Address[ip]
-				if addr.Config != nil {
-					log.Info("Ip:=", *addr.Config.Ip)
-					log.Info("prefix:=", *addr.Config.PrefixLength)
-					if !validIPv4(*addr.Config.Ip) {
-						errStr := "Invalid IPv4 address " + *addr.Config.Ip
-						err = tlerr.InvalidArgsError{Format: errStr}
-						return err
-					}
-					err = app.translateIpv4(d, *ifKey, *addr.Config.Ip, int(*addr.Config.PrefixLength))
-					if err != nil {
-						return err
-					}
-				}
-			}
-		}
-		if subIf.Ipv6 != nil && subIf.Ipv6.Addresses != nil {
-			for ip, _ := range subIf.Ipv6.Addresses.Address {
-				addr := subIf.Ipv6.Addresses.Address[ip]
-				if addr.Config != nil {
-					log.Info("Ip:=", *addr.Config.Ip)
-					log.Info("prefix:=", *addr.Config.PrefixLength)
-					if !validIPv6(*addr.Config.Ip) {
-						errStr := "Invalid IPv6 address " + *addr.Config.Ip
-						err = tlerr.InvalidArgsError{Format: errStr}
-						return err
-					}
-					err = app.translateIpv4(d, *ifKey, *addr.Config.Ip, int(*addr.Config.PrefixLength))
-					if err != nil {
-						return err
-					}
-				}
-			}
-		}
-	} else {
-		err = errors.New("Only subinterface index 0 is supported")
-		return err
-	}
-	return err
+    var err error
+    if intf.Subinterfaces == nil {
+            return err
+    }
+    subIf := intf.Subinterfaces.Subinterface[0]
+    if subIf != nil {
+            if subIf.Ipv4 != nil && subIf.Ipv4.Addresses != nil {
+                    for ip, _ := range subIf.Ipv4.Addresses.Address {
+                            addr := subIf.Ipv4.Addresses.Address[ip]
+                            if addr.Config != nil {
+                                    log.Info("Ip:=", *addr.Config.Ip)
+                                    log.Info("prefix:=", *addr.Config.PrefixLength)
+                                    if !validIPv4(*addr.Config.Ip) {
+                                            errStr := "Invalid IPv4 address " + *addr.Config.Ip
+                                            err = tlerr.InvalidArgsError{Format: errStr}
+                                            return err
+                                    }
+                                    err = app.translateIpv4(d, *ifKey, *addr.Config.Ip, int(*addr.Config.PrefixLength))
+                                    if err != nil {
+                                            return err
+                                    }
+                            }
+                    }
+            }
+            if subIf.Ipv6 != nil && subIf.Ipv6.Addresses != nil {
+                    for ip, _ := range subIf.Ipv6.Addresses.Address {
+                            addr := subIf.Ipv6.Addresses.Address[ip]
+                            if addr.Config != nil {
+                                    log.Info("Ip:=", *addr.Config.Ip)
+                                    log.Info("prefix:=", *addr.Config.PrefixLength)
+                                    if !validIPv6(*addr.Config.Ip) {
+                                            errStr := "Invalid IPv6 address " + *addr.Config.Ip
+                                            err = tlerr.InvalidArgsError{Format: errStr}
+                                            return err
+                                    }
+                                    err = app.translateIpv4(d, *ifKey, *addr.Config.Ip, int(*addr.Config.PrefixLength))
+                                    if err != nil {
+                                            return err
+                                    }
+                            }
+                    }
+            }
+    } else {
+            err = errors.New("Only subinterface index 0 is supported")
+            return err
+    }
+    return err
 }
 
 func (app *IntfApp) translateDeleteIntfSubInterfaces(d *db.DB, intf *ocbinds.OpenconfigInterfaces_Interfaces_Interface, ifName *string) error {
-        log.Info("Inside translateDeleteIntfSubInterfaces")
-	var err error
-	if intf.Subinterfaces == nil {
-		return err
-	}
-        err = app.getIntfTypeFromIntf(ifName)
-        if err != nil {
-                return err
-        }
-        /* Find the type of Interface*/
-        ts := app.intfD.intfIPTs
-        if app.intfType == LAG {
-            ts = app.lagD.lagIPTs
-        }
-	subIf := intf.Subinterfaces.Subinterface[0]
-	if subIf != nil {
-		if subIf.Ipv4 != nil && subIf.Ipv4.Addresses != nil {
-			for ip, _ := range subIf.Ipv4.Addresses.Address {
-				addr := subIf.Ipv4.Addresses.Address[ip]
-				if addr != nil {
-					ipAddr := addr.Ip
-					log.Info("IPv4 address = ", *ipAddr)
-					if !validIPv4(*ipAddr) {
-						errStr := "Invalid IPv4 address " + *ipAddr
-						ipValidErr := tlerr.InvalidArgsError{Format: errStr}
-						return ipValidErr
-					}
-					err = app.validateIp(d, *ifName, *ipAddr, ts)
-					if err != nil {
-						errStr := "Invalid IPv4 address " + *ipAddr
-						ipValidErr := tlerr.InvalidArgsError{Format: errStr}
-						return ipValidErr
-					}
-				}
-			}
-		}
-		if subIf.Ipv6 != nil && subIf.Ipv6.Addresses != nil {
-			for ip, _ := range subIf.Ipv6.Addresses.Address {
-				addr := subIf.Ipv6.Addresses.Address[ip]
-				if addr != nil {
-					ipAddr := addr.Ip
-					log.Info("IPv6 address = ", *ipAddr)
-					if !validIPv6(*ipAddr) {
-						errStr := "Invalid IPv6 address " + *ipAddr
-						ipValidErr := tlerr.InvalidArgsError{Format: errStr}
-						return ipValidErr
-					}
-					err = app.validateIp(d, *ifName, *ipAddr,ts)
-					if err != nil {
-						errStr := "Invalid IPv6 address:" + *ipAddr
-						ipValidErr := tlerr.InvalidArgsError{Format: errStr}
-						return ipValidErr
-					}
-				}
-			}
-		}
-	} else {
-		err = errors.New("Only subinterface index 0 is supported")
-		return err
-	}
-	return err
+    log.Info("Inside translateDeleteIntfSubInterfaces")
+    var err error
+    if intf.Subinterfaces == nil {
+            return err
+    }
+    err = app.getIntfTypeFromIntf(ifName)
+    if err != nil {
+            return err
+    }
+    /* Find the type of Interface*/
+    ts := app.intfD.intfIPTs
+    if app.intfType == LAG {
+        ts = app.lagD.lagIPTs
+    }
+    subIf := intf.Subinterfaces.Subinterface[0]
+    if subIf != nil {
+            if subIf.Ipv4 != nil && subIf.Ipv4.Addresses != nil {
+                    for ip, _ := range subIf.Ipv4.Addresses.Address {
+                            addr := subIf.Ipv4.Addresses.Address[ip]
+                            if addr != nil {
+                                    ipAddr := addr.Ip
+                                    log.Info("IPv4 address = ", *ipAddr)
+                                    if !validIPv4(*ipAddr) {
+                                            errStr := "Invalid IPv4 address " + *ipAddr
+                                            ipValidErr := tlerr.InvalidArgsError{Format: errStr}
+                                            return ipValidErr
+                                    }
+                                    err = app.validateIp(d, *ifName, *ipAddr, ts)
+                                    if err != nil {
+                                            errStr := "Invalid IPv4 address " + *ipAddr
+                                            ipValidErr := tlerr.InvalidArgsError{Format: errStr}
+                                            return ipValidErr
+                                    }
+                            }
+                    }
+            }
+            if subIf.Ipv6 != nil && subIf.Ipv6.Addresses != nil {
+                    for ip, _ := range subIf.Ipv6.Addresses.Address {
+                            addr := subIf.Ipv6.Addresses.Address[ip]
+                            if addr != nil {
+                                    ipAddr := addr.Ip
+                                    log.Info("IPv6 address = ", *ipAddr)
+                                    if !validIPv6(*ipAddr) {
+                                            errStr := "Invalid IPv6 address " + *ipAddr
+                                            ipValidErr := tlerr.InvalidArgsError{Format: errStr}
+                                            return ipValidErr
+                                    }
+                                    err = app.validateIp(d, *ifName, *ipAddr,ts)
+                                    if err != nil {
+                                            errStr := "Invalid IPv6 address:" + *ipAddr
+                                            ipValidErr := tlerr.InvalidArgsError{Format: errStr}
+                                            return ipValidErr
+                                    }
+                            }
+                    }
+            }
+    } else {
+            err = errors.New("Only subinterface index 0 is supported")
+            return err
+    }
+    return err
 }
 
 func (app *IntfApp) getSpecificIfStateAttr(targetUriPath *string, ifKey *string, oc_val *ocbinds.OpenconfigInterfaces_Interfaces_Interface_State) (bool, error) {
@@ -294,67 +291,67 @@ func (app *IntfApp) getSpecificIfVlanAttr(targetUriPath *string, ifKey *string, 
 func (app *IntfApp) getSpecificIfLagAttr(d *db.DB, targetUriPath *string, ifKey *string, oc_val *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Aggregation_State) (bool, error) {
     switch *targetUriPath {
     case "/openconfig-interfaces:interfaces/interface/openconfig-if-aggregate:aggregation/state/min-links":
-            curr, err := d.GetEntry(app.lagD.lagTs, db.Key{Comp: []string{*ifKey}})
+        curr, err := d.GetEntry(app.lagD.lagTs, db.Key{Comp: []string{*ifKey}})
+        if err != nil {
+            errStr := "Failed to Get PortChannel details"
+            return true, errors.New(errStr)
+        }
+        if val, ok := curr.Field["min_links"]; ok {
+            log.Info("curr.Field['min_links']", val)
+            min_links, err := strconv.Atoi(curr.Field["min_links"])
             if err != nil {
-                    errStr := "Failed to Get PortChannel details"
+                    errStr := "Conversion of string to int failed"
                     return true, errors.New(errStr)
             }
-            if val, ok := curr.Field["min_links"]; ok {
-                log.Info("curr.Field['min_links']", val)
-                min_links, err := strconv.Atoi(curr.Field["min_links"])
-                if err != nil {
-                        errStr := "Conversion of string to int failed"
-                        return true, errors.New(errStr)
-                }
-                links := uint16(min_links)
-                oc_val.MinLinks = &links
-            } else {
-                log.Info("Minlinks set to 0 (dafault value)")
-                links := uint16(0)
-                oc_val.MinLinks = &links
-            }
-            return true, nil
+            links := uint16(min_links)
+            oc_val.MinLinks = &links
+        } else {
+            log.Info("Minlinks set to 0 (dafault value)")
+            links := uint16(0)
+            oc_val.MinLinks = &links
+        }
+        return true, nil
     case "/openconfig-interfaces:interfaces/interface/openconfig-if-aggregate:aggregation/state/member":
-            lagKeys, err := d.GetKeys(app.lagD.lagMemberTs)
+        lagKeys, err := d.GetKeys(app.lagD.lagMemberTs)
+        if err != nil {
+            log.Info("No entries in PORTCHANNEL_MEMBER TABLE")
+            return true, err
+        }
+        var flag bool = false
+        for i, _ := range lagKeys {
+            if *ifKey == lagKeys[i].Get(0) {
+                log.Info("Found lagKey")
+                flag = true
+                ethName := lagKeys[i].Get(1)
+                oc_val.Member = append(oc_val.Member, ethName)
+            }
+        }
+        if (flag == false){
+            log.Info("Given PortChannel has no members")
+            errStr := "Given PortChannel has no members"
+            return true, errors.New(errStr)
+        }
+        return true, nil
+    case "/openconfig-interfaces:interfaces/interface/openconfig-if-aggregate:aggregation/state/dell-intf-augments:fallback":
+        curr, err := d.GetEntry(app.lagD.lagTs, db.Key{Comp: []string{*ifKey}})
+        if err != nil {
+            errStr := "Failed to Get PortChannel details"
+            return true, errors.New(errStr)
+        }
+        if val, ok := curr.Field["fallback"]; ok {
+            log.Info("curr.Field['fallback']", val)
+            fallbackVal, err := strconv.ParseBool(val)
             if err != nil {
-                log.Info("No entries in PORTCHANNEL_MEMBER TABLE")
-                return true, err
-            }
-            var flag bool = false
-            for i, _ := range lagKeys {
-                if *ifKey == lagKeys[i].Get(0) {
-                    log.Info("Found lagKey")
-                    flag = true
-                    ethName := lagKeys[i].Get(1)
-                    oc_val.Member = append(oc_val.Member, ethName)
-                }
-            }
-            if (flag == false){
-                log.Info("Given PortChannel has no members")
-                errStr := "Given PortChannel has no members"
+                errStr := "Conversion of string to bool failed"
                 return true, errors.New(errStr)
             }
-            return true, nil
-    case "/openconfig-interfaces:interfaces/interface/openconfig-if-aggregate:aggregation/state/dell-intf-augments:fallback":
-            curr, err := d.GetEntry(app.lagD.lagTs, db.Key{Comp: []string{*ifKey}})
-            if err != nil {
-                    errStr := "Failed to Get PortChannel details"
-                    return true, errors.New(errStr)
-            }
-            if val, ok := curr.Field["fallback"]; ok {
-                log.Info("curr.Field['fallback']", val)
-                fallbackVal, err := strconv.ParseBool(val)
-                if err != nil {
-                        errStr := "Conversion of string to bool failed"
-                        return true, errors.New(errStr)
-                }
-                oc_val.Fallback = &fallbackVal
-            } else {
-                log.Info("Fallback set to False, default value")
-                fallbackVal := false
-                oc_val.Fallback = &fallbackVal
-            }
-            return true, nil
+            oc_val.Fallback = &fallbackVal
+        } else {
+            log.Info("Fallback set to False, default value")
+            fallbackVal := false
+            oc_val.Fallback = &fallbackVal
+        }
+        return true, nil
 
     default:
             log.Infof(*targetUriPath + " - Not an supported Get attribute")
@@ -524,66 +521,66 @@ func (app *IntfApp) getIntfVlanAttr(ifName *string, ifMode intfModeType) ([]stri
 }
 
 func (app *IntfApp) processGetSpecificAttr(targetUriPath *string, ifKey *string) (bool, *GetResponse, error) {
-	var err error
-	var payload []byte
+    var err error
+    var payload []byte
 
-	/*Check if the request is for a specific attribute in Interfaces state container*/
-	ocStateVal := &ocbinds.OpenconfigInterfaces_Interfaces_Interface_State{}
-	ok, e := app.getSpecificIfStateAttr(targetUriPath, ifKey, ocStateVal)
-	if ok {
-		if e != nil {
-			return ok, &(GetResponse{Payload: payload, ErrSrc: AppErr}), e
-		}
-		payload, err = dumpIetfJson(ocStateVal, false)
-		if err != nil {
-			return ok, &(GetResponse{Payload: payload, ErrSrc: AppErr}), err
-		}
-		return ok, &(GetResponse{Payload: payload}), err
+    /*Check if the request is for a specific attribute in Interfaces state container*/
+    ocStateVal := &ocbinds.OpenconfigInterfaces_Interfaces_Interface_State{}
+    ok, e := app.getSpecificIfStateAttr(targetUriPath, ifKey, ocStateVal)
+    if ok {
+            if e != nil {
+                    return ok, &(GetResponse{Payload: payload, ErrSrc: AppErr}), e
+            }
+            payload, err = dumpIetfJson(ocStateVal, false)
+            if err != nil {
+                    return ok, &(GetResponse{Payload: payload, ErrSrc: AppErr}), err
+            }
+            return ok, &(GetResponse{Payload: payload}), err
 
-	}
+    }
 
-	/*Check if the request is for a specific attribute in Interfaces state COUNTERS container*/
-	counter_val := &ocbinds.OpenconfigInterfaces_Interfaces_Interface_State_Counters{}
-	ok, e = app.getSpecificCounterAttr(targetUriPath, ifKey, counter_val)
-	if ok {
-		if e != nil {
-			return ok, &(GetResponse{Payload: payload, ErrSrc: AppErr}), e
-		}
+    /*Check if the request is for a specific attribute in Interfaces state COUNTERS container*/
+    counter_val := &ocbinds.OpenconfigInterfaces_Interfaces_Interface_State_Counters{}
+    ok, e = app.getSpecificCounterAttr(targetUriPath, ifKey, counter_val)
+    if ok {
+            if e != nil {
+                    return ok, &(GetResponse{Payload: payload, ErrSrc: AppErr}), e
+            }
 
-		payload, err = dumpIetfJson(counter_val, false)
-		if err != nil {
-			return ok, &(GetResponse{Payload: payload, ErrSrc: AppErr}), err
-		}
-		return ok, &(GetResponse{Payload: payload}), err
-	}
+            payload, err = dumpIetfJson(counter_val, false)
+            if err != nil {
+                    return ok, &(GetResponse{Payload: payload, ErrSrc: AppErr}), err
+            }
+            return ok, &(GetResponse{Payload: payload}), err
+    }
 
-	/*Check if the request is for a specific attribute in Interfaces Ethernet container*/
-	ocEthernetVlanStateVal := &ocbinds.OpenconfigInterfaces_Interfaces_Interface_Ethernet_SwitchedVlan_State{}
-	ok, e = app.getSpecificIfVlanAttr(targetUriPath, ifKey, ocEthernetVlanStateVal)
-	if ok {
-		if e != nil {
-			return ok, &(GetResponse{Payload: payload, ErrSrc: AppErr}), e
-		}
-		payload, err = dumpIetfJson(ocEthernetVlanStateVal, false)
-		if err != nil {
-			return ok, &(GetResponse{Payload: payload, ErrSrc: AppErr}), err
-		}
-		return ok, &(GetResponse{Payload: payload}), err
-	}
-	/*Check if the request is for a specific attribute in Interfaces Aggregation container*/
-	ocEthernetLagStateVal := &ocbinds.OpenconfigInterfaces_Interfaces_Interface_Aggregation_State{}
-	ok, e = app.getSpecificIfLagAttr(app.configDB, targetUriPath, ifKey, ocEthernetLagStateVal)
-	if ok {
-		if e != nil {
-			return ok, &(GetResponse{Payload: payload, ErrSrc: AppErr}), e
-		}
-		payload, err = dumpIetfJson(ocEthernetLagStateVal, false)
-		if err != nil {
-			return ok, &(GetResponse{Payload: payload, ErrSrc: AppErr}), err
-		}
-		return ok, &(GetResponse{Payload: payload}), err
-	}
-	return ok, &(GetResponse{Payload: payload}), err
+    /*Check if the request is for a specific attribute in Interfaces Ethernet container*/
+    ocEthernetVlanStateVal := &ocbinds.OpenconfigInterfaces_Interfaces_Interface_Ethernet_SwitchedVlan_State{}
+    ok, e = app.getSpecificIfVlanAttr(targetUriPath, ifKey, ocEthernetVlanStateVal)
+    if ok {
+            if e != nil {
+                    return ok, &(GetResponse{Payload: payload, ErrSrc: AppErr}), e
+            }
+            payload, err = dumpIetfJson(ocEthernetVlanStateVal, false)
+            if err != nil {
+                    return ok, &(GetResponse{Payload: payload, ErrSrc: AppErr}), err
+            }
+            return ok, &(GetResponse{Payload: payload}), err
+    }
+    /*Check if the request is for a specific attribute in Interfaces Aggregation container*/
+    ocEthernetLagStateVal := &ocbinds.OpenconfigInterfaces_Interfaces_Interface_Aggregation_State{}
+    ok, e = app.getSpecificIfLagAttr(app.configDB, targetUriPath, ifKey, ocEthernetLagStateVal)
+    if ok {
+            if e != nil {
+                    return ok, &(GetResponse{Payload: payload, ErrSrc: AppErr}), e
+            }
+            payload, err = dumpIetfJson(ocEthernetLagStateVal, false)
+            if err != nil {
+                    return ok, &(GetResponse{Payload: payload, ErrSrc: AppErr}), err
+            }
+            return ok, &(GetResponse{Payload: payload}), err
+    }
+    return ok, &(GetResponse{Payload: payload}), err
 }
 
 func (app *IntfApp) getPortOidMapForCounters(dbCl *db.DB) error {
@@ -875,9 +872,7 @@ func (app *IntfApp) convertInternalToOCIntfAttrInfo(ifName *string, ifInfo *ocbi
 					ifInfo.State.Ifindex = ifIdx
 				}
                         case ACTIVE:
-				//ifStr := ifData.Get(ifAttr)
                         case NAME:
-				//ifStr := ifData.Get(ifAttr)
 			default:
 				log.Info("Not a valid attribute!")
 			}
@@ -1001,7 +996,7 @@ func (app *IntfApp) convertInternalToOCIntfIPAttrInfo(ifName *string, ifInfo *oc
 
 func (app *IntfApp) convertInternalToOCPortStatInfo(ifName *string, ifInfo *ocbinds.OpenconfigInterfaces_Interfaces_Interface) {
 	if len(app.intfD.portStatMap) == 0 {
-		//log.Info("Port stat info not present for interface : %s", *ifName)
+		log.Info("Port stat info not present for interface :", *ifName)
 		return
 	}
 	if ifInfo.State == nil || ifInfo.State.Counters == nil {

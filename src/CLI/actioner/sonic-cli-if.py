@@ -122,7 +122,6 @@ def generate_body(func, args):
     # Add members to port-channel
     elif func.__name__ == 'patch_openconfig_if_aggregate_interfaces_interface_ethernet_config_aggregate_id': 
         keypath = [ args[0] ]
-        print("Given PortChannel ID is",args[1])
         body = { "openconfig-if-aggregate:aggregate-id": args[1] }
 
     # Remove members from port-channel
@@ -178,7 +177,6 @@ def run(func, args):
         else:
             # Get Command Output
             api_response = aa.api_client.sanitize_for_serialization(api_response)
-            print (api_response)
 
             if 'openconfig-interfaces:interfaces' in api_response:
                 value = api_response['openconfig-interfaces:interfaces']

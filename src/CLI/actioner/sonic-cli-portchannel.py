@@ -55,7 +55,6 @@ def generate_body(func, args):
 
     return keypath,body
 
-
 def run(func, args):
 
     c = sonic_portchannel_client.Configuration()
@@ -72,7 +71,7 @@ def run(func, args):
            api_response = getattr(aa,func.__name__)(*keypath, body=body)
         else :
            api_response = getattr(aa,func.__name__)(*keypath)
-        
+
         if api_response is None:
             print ("Success")
         else:
@@ -86,20 +85,20 @@ def run(func, args):
                 print("Failed")
             else:
                 if func.__name__ == 'get_sonic_portchannel_sonic_portchannel_lag_table':
-		    memlst=[]
+                    memlst=[]
                     # Get members for all PortChannels
                     api_response_members = getattr(aa,'get_sonic_portchannel_sonic_portchannel_lag_member_table')(*keypath)
                     api_response_members = aa.api_client.sanitize_for_serialization(api_response_members)
                     if 'sonic-portchannel:LAG_MEMBER_TABLE' in api_response_members:
-                        memlst = api_response_members['sonic-portchannel:LAG_MEMBER_TABLE']['LAG_MEMBER_TABLE_LIST']                   
+                        memlst = api_response_members['sonic-portchannel:LAG_MEMBER_TABLE']['LAG_MEMBER_TABLE_LIST']
                     for pc_dict in laglst:
                         pc_dict['members']=[]
                         pc_dict['type']="Eth"
                         for mem_dict in memlst:
                             if mem_dict['name'] == pc_dict['lagname']:
-        	                keypath = [mem_dict['ifname']]
+                                keypath = [mem_dict['ifname']]
                                 pc_dict['members'].append(mem_dict['ifname'])
-                    show_cli_output("show_portchannel.j2", laglst)
+                    show_cli_output(args[0], laglst)
                 else:
                      return
     except ApiException as e:

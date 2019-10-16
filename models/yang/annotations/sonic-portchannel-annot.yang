@@ -17,7 +17,6 @@ module sonic-portchannel-annot {
       }
     }
 
-
     deviation /spc:sonic-portchannel/spc:LAG_MEMBER_TABLE {
       deviate add {
             sonic-ext:db-name "APPL_DB";

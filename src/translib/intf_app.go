@@ -58,7 +58,6 @@ type vlanData struct {
 	vlanMembersTableMap map[string]map[string]dbEntry
 }
 
-
 type lagData struct {
 	lagTs       *db.TableSpec
 	lagMemberTs *db.TableSpec
@@ -199,6 +198,7 @@ func (app *IntfApp) translateUpdate(d *db.DB) ([]db.WatchKeys, error) {
 
 	targetUriPath, err := getYangPathFromUri(app.path.Path)
 	log.Info("uripath:=", targetUriPath)
+	log.Info("err:=", err)
 
 	if intfObj.Interface != nil && len(intfObj.Interface) > 0 {
 		log.Info("len:=", len(intfObj.Interface))
@@ -291,6 +291,11 @@ func (app *IntfApp) translateDelete(d *db.DB) ([]db.WatchKeys, error) {
 func (app *IntfApp) translateGet(dbs [db.MaxDB]*db.DB) error {
 	var err error
 	log.Info("translateGet:intf:path =", app.path)
+	return err
+}
+
+func (app *IntfApp) translateAction(dbs [db.MaxDB]*db.DB) error {
+	err := errors.New("Not supported")
 	return err
 }
 
@@ -420,4 +425,11 @@ func (app *IntfApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
             return app.processGetAllInterfaces(dbs)
     }
     return GetResponse{Payload: payload}, err
+}
+
+func (app *IntfApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, error) {
+	var resp ActionResponse
+	err := errors.New("Not implemented")
+
+	return resp, err
 }

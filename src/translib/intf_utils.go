@@ -97,7 +97,7 @@ func (app *IntfApp) validateIpCfgredForInterface(dbCl *db.DB, ifName *string) bo
 }
 
 /* Check for IP overlap */
-func (app *IntfApp) translateIpv4(d *db.DB, intf string, ip string, prefix int, ) error {
+func (app *IntfApp) translateIpv4(d *db.DB, intf string, ip string, prefix int) error {
 	var err error
 	var ifsKey db.Key
 
@@ -274,7 +274,6 @@ func validIPv4(ipAddress string) bool {
 
 	re, _ := regexp.Compile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$`)
 	if re.MatchString(ipAddress) {
-                log.Info("Given IP address is valid")
 		return true
 	}
 	return false
