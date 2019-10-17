@@ -118,6 +118,47 @@ func (app *IntfApp) translateUpdateIntfSubInterfaces(d *db.DB, ifKey *string, in
     return err
 }
 
+/* Handling IP address configuration for given Interface */
+func (app *IntfApp) processUpdateIntfSubInterfaces(d *db.DB) error {
+    var err error
+    /* Updating the table */
+    for ifName, ipEntries := range app.ifIPTableMap {
+            ts := app.intfD.intfIPTs
+            if app.intfType == LAG {
+                ts = app.lagD.lagIPTs
+            }
+            m := make(map[string]string)
+            m["NULL"] = "NULL"
+            ifEntry, err := d.GetEntry(ts, db.Key{Comp: []string{ifName}})
+            if err != nil || !ifEntry.IsPopulated() {
+                    err = d.CreateEntry(ts, db.Key{Comp: []string{ifName}}, db.Value{Field: m})
+                    if err != nil {
+                            log.Info("Failed to create Interface entry with Interface name")
+                            return err
+                    }
+                    log.Infof("Created Interface entry with Interface name : %s alone!", ifName)
+            }
+            for ip, ipEntry := range ipEntries {
+                if ipEntry.op == opCreate {
+                        log.Info("Creating entry for ", ifName, ":", ip)
+                        err = d.CreateEntry(ts, db.Key{Comp: []string{ifName, ip}}, ipEntry.entry)
+                        if err != nil {
+                                errStr := "Creating entry for " + ifName + ":" + ip + " failed"
+                                return errors.New(errStr)
+                        }
+                } else if ipEntry.op == opDelete {
+                        log.Info("Deleting entry for ", ifName, ":", ip)
+                        err = d.DeleteEntry(ts, db.Key{Comp: []string{ifName, ip}})
+                        if err != nil {
+                                errStr := "Deleting entry for " + ifName + ":" + ip + " failed"
+                                return errors.New(errStr)
+                        }
+                }
+            }
+    }
+    return err
+}
+
 func (app *IntfApp) translateDeleteIntfSubInterfaces(d *db.DB, intf *ocbinds.OpenconfigInterfaces_Interfaces_Interface, ifName *string) error {
     log.Info("Inside translateDeleteIntfSubInterfaces")
     var err error

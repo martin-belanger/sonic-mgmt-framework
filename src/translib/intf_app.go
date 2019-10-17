@@ -345,30 +345,30 @@ func (app *IntfApp) processCreate(d *db.DB) (SetResponse, error) {
 }
 
 func (app *IntfApp) processUpdate(d *db.DB) (SetResponse, error) {
-	var err error
-	var resp SetResponse
+    var err error
+    var resp SetResponse
 
-	log.Info("processUpdate:intf:path =", app.path)
-	log.Info("ProcessUpdate: Target Type is " + reflect.TypeOf(*app.ygotTarget).Elem().Name())
+    log.Info("processUpdate:intf:path =", app.path)
+    log.Info("ProcessUpdate: Target Type is " + reflect.TypeOf(*app.ygotTarget).Elem().Name())
 
-	switch app.intfType {
-	case ETHERNET:
-		err = app.processUpdatePhyIntf(d)
-		if err != nil {
-			return resp, err
-		}
-	case VLAN:
-		err = app.processUpdateVlanIntf(d)
-		if err != nil {
-			return resp, err
-		}
-	case LAG:
-		err = app.processUpdateLagIntf(d)
-		if err != nil {
-			return resp, err
-		}
-        }
-	return resp, err
+    switch app.intfType {
+        case ETHERNET:
+            err = app.processUpdatePhyIntf(d)
+            if err != nil {
+                return resp, err
+            }
+        case VLAN:
+            err = app.processUpdateVlanIntf(d)
+            if err != nil {
+                return resp, err
+            }
+        case LAG:
+            err = app.processUpdateLagIntf(d)
+            if err != nil {
+                return resp, err
+            }
+    }
+    return resp, err
 }
 
 func (app *IntfApp) processReplace(d *db.DB) (SetResponse, error) {

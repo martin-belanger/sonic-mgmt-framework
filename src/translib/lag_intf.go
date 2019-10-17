@@ -48,10 +48,10 @@ func (app *IntfApp) translateUpdateLagIntfConfig(d *db.DB, lagName *string, lag 
             return err
         }
         if lag.Aggregation.Config.MinLinks != nil {
-                curr.Field["min_links"]= strconv.Itoa(int(*lag.Aggregation.Config.MinLinks))
+            curr.Field["min_links"]= strconv.Itoa(int(*lag.Aggregation.Config.MinLinks))
         }
         if lag.Aggregation.Config.Fallback != nil {
-                curr.Field["fallback"]=  strconv.FormatBool(*lag.Aggregation.Config.Fallback)
+            curr.Field["fallback"]=  strconv.FormatBool(*lag.Aggregation.Config.Fallback)
         }
     }
     app.translateUpdateIntfConfig(lagName, lag, &curr)
@@ -69,7 +69,7 @@ func (app *IntfApp) translateUpdateLagIntf(d *db.DB, lagName *string, inpOp reqT
     /* Handling Interface attrbutes config updates */
     app.translateUpdateLagIntfConfig(d, lagName, intf)
     if err != nil {
-            return keys, err
+        return keys, err
     }
 
     /* Handling Interface IP address updates */
@@ -101,41 +101,14 @@ func (app *IntfApp) processUpdateLagIntfConfig(d *db.DB) error {
     return err
 }
 
-/* Handling IP address configuration for given PortChannel */
-func (app *IntfApp) processUpdateLagIntfSubInterfaces(d *db.DB) error {
-    var err error
-    /* Updating the PORTCANNEL_INTERFACE table */
-    for ifName, ipEntries := range app.ifIPTableMap {
-            ts := app.lagD.lagIPTs
-            for ip, ipEntry := range ipEntries {
-                if ipEntry.op == opCreate {
-                        log.Info("Creating entry for ", ifName, ":", ip)
-                        err = d.CreateEntry(ts, db.Key{Comp: []string{ifName, ip}}, ipEntry.entry)
-                        if err != nil {
-                                errStr := "Creating entry for " + ifName + ":" + ip + " failed"
-                                return errors.New(errStr)
-                        }
-                } else if ipEntry.op == opDelete {
-                        log.Info("Deleting entry for ", ifName, ":", ip)
-                        err = d.DeleteEntry(ts, db.Key{Comp: []string{ifName, ip}})
-                        if err != nil {
-                                errStr := "Deleting entry for " + ifName + ":" + ip + " failed"
-                                return errors.New(errStr)
-                        }
-                }
-            }
-    }
-    return err
-}
-
 func (app *IntfApp) processUpdateLagIntf(d *db.DB) error {
     var err error
     err = app.processUpdateLagIntfConfig(d)
     if err != nil {
-            return err
+        return err
     }
 
-    err = app.processUpdateLagIntfSubInterfaces(d)
+    err = app.processUpdateIntfSubInterfaces(d)
     if err != nil {
         return err
     }
@@ -173,7 +146,7 @@ func (app *IntfApp) translateDeleteLagIntf(d *db.DB, ifName *string) ([]db.Watch
     /* Handling PortChannel Deletion */
     err = app.translateDeleteLagIntface(d, intf, ifName)
     if err != nil {
-            return keys, err
+        return keys, err
     }
 
     return keys, err
@@ -202,12 +175,26 @@ func (app *IntfApp) processDeleteLagIntfAndMembers(d *db.DB) error {
         }
         /* Delete entry in PORTCHANNEL_INTERFACE TABLE */
         if err2 == nil {
-            for i, _ := range lagIPKeys {
+            for i := range lagIPKeys {
                 if lagKey == lagIPKeys[i].Get(0) {
-                    log.Info("Removing IP entry", lagKeys[i].Get(1))
-                    err = d.DeleteEntry(app.lagD.lagIPTs, lagKeys[i])
+                    log.Info("the length is", len(lagIPKeys[i].Comp))
+                    if len(lagIPKeys[i].Comp) < 2 {
+                        continue
+                    }
+                    ifname := lagIPKeys[i].Get(1)
+                    log.Info("Removing IP entry for", ifname)
+                    err = d.DeleteEntry(app.lagD.lagIPTs, lagIPKeys[i])
                     if err != nil {
                         log.Info("Deleting IP address entry failed")
+                        return err
+                    }
+                }
+            }
+            for i := range lagIPKeys {
+                if len(lagIPKeys[i].Comp) < 2 {
+                    err = d.DeleteEntry(app.lagD.lagIPTs, db.Key{Comp: []string{lagKey}})
+                    if err != nil {
+                        log.Info("Unable to delete Interface name entry in PORTCHANNEL_INTERFACE TABLE")
                         return err
                     }
                 }
@@ -244,12 +231,12 @@ func (app *IntfApp) processDeleteLagIntf(d *db.DB) error {
 
     err = app.processDeleteLagIntfSubInterfaces(d)
     if err != nil {
-            return err
+        return err
     }
 
     err = app.processDeleteLagIntfAndMembers(d)
     if err != nil {
-            return err
+        return err
     }
 
     return err

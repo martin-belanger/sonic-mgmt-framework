@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?cp fallback enablexml version="1.0" encoding="UTF-8"?>
 <!--
 Copyright 2019 Dell, Inc.
 
@@ -675,7 +675,7 @@ limitations under the License.
             mode="subcommand"
             /> <!-- lacp fallback enable -->
         <ACTION> python $SONIC_CLI_ROOT/sonic-cli-if.py patch_dell_intf_augments_interfaces_interface_aggregation_config_fallback ${po_id} True </ACTION>
-  </COMMAND>
+    </COMMAND>
     <COMMAND
         name="no fallback"
         help="Disable fallback">
