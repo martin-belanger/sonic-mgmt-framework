@@ -4,6 +4,12 @@ import (
     "errors"
     "translib/ocbinds"
     "reflect"
+    "encoding/json"
+    "fmt"
+//    "io/ioutil"
+//    "os"
+    "os/exec"
+
     log "github.com/golang/glog"
 )
 
@@ -66,6 +72,7 @@ func init () {
     XlateFuncBind("DbToYang_bgp_ignore_as_path_length_xfmr", DbToYang_bgp_ignore_as_path_length_xfmr)
     XlateFuncBind("YangToDb_bgp_external_compare_router_id_xfmr", YangToDb_bgp_external_compare_router_id_xfmr)
     XlateFuncBind("DbToYang_bgp_external_compare_router_id_xfmr", DbToYang_bgp_external_compare_router_id_xfmr)
+    XlateFuncBind("DbToYang_protocols_table_transformer", DbToYang_protocols_table_transformer)
 }
 
 var YangToDb_bgp_gbl_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
@@ -299,6 +306,142 @@ var DbToYang_bgp_external_compare_router_id_xfmr FieldXfmrDbtoYang = func(inPara
         log.Info("external_compare_router_id field not found in DB")
     }
     return result, err
+}
+
+func processNbr(ip string, n interface{}, proObj * ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol) error {
+
+	nbr := n.(map[string]interface{})
+
+	fmt.Println(ip, "(object)")
+
+    nbrObj, _ := proObj.Bgp.Neighbors.NewNeighbor(ip)
+	ygot.BuildEmptyTree(nbrObj)
+
+	nbrState := nbrObj.State
+	nbrDesc := "this is a test"
+	nbrState.Description = &nbrDesc
+	nbrEn := true
+	nbrState.Enabled = &nbrEn
+
+	for i, j := range nbr {
+		switch i {
+		case "localAs":
+			var localAs uint32 = uint32(j.(float64))
+			nbrState.LocalAs = &localAs
+		case "remoteAs":
+			var remoteAs uint32 = uint32(j.(float64))
+			nbrState.PeerAs = &remoteAs
+		case "nbrDesc":
+			nbrDesc = j.(string)
+			nbrState.Description = &nbrDesc
+		}
+		switch j := j.(type){
+		case string:
+			fmt.Println("    ", i, j, "(string)")
+		case float64:
+			fmt.Println("    ", i, j, "(float64)")
+		case []interface{}:
+			fmt.Println("    ", i, "(array):")
+			for p, q := range j {
+				fmt.Println("        ", p, q)
+			}
+		case map[string]interface{}:
+			fmt.Println("    ", i, "(object)")
+		}
+	}
+	return nil
+}
+
+func xfm_show_bgp_nbrs (proObj * ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol) error {
+	var err error
+	out, err := exec.Command("/usr/bin/docker", "exec", "-t", "bgp", "vtysh", "-c", "show bgp neighbor json").Output()
+	//out, err := exec.Command("/usr/bin/docker", "ps", "-s", "--size").Output()
+	//out, err := exec.Command("ls").Output()
+
+/*
+	jsonFile, err := os.Open("/tmp/output")
+
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	out, _ := ioutil.ReadAll(jsonFile)
+*/
+	fmt.Printf("Output: %s", out)
+
+	var result map[string]interface{}
+	json.Unmarshal([]byte(out), &result)
+
+	ygot.BuildEmptyTree(proObj.Bgp)
+	ygot.BuildEmptyTree(proObj.Bgp.Global)
+	ygot.BuildEmptyTree(proObj.Bgp.Global.Config)
+  
+	for k, v := range result {
+		processNbr(k,v, proObj)
+	}
+
+	cfgObj := proObj.Bgp.Global.Config
+	var as uint32 = 100
+	var routerId string = "1.1.1.11"
+	cfgObj.As = &as
+	cfgObj.RouterId = &routerId
+	
+	return err
+}
+var DbToYang_protocols_table_transformer SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
+	var err error
+
+	log.Info("JJ DbToYang_protocols - uri", inParams.uri)
+
+	//    intfsObj := getIntfsRoot(inParams.ygRoot)
+	//    pathInfo := NewPathInfo(inParams.uri)
+	targetUriPath, err := getYangPathFromUri(inParams.uri)
+	log.Info("targetUriPath is ", targetUriPath)
+
+	if targetUriPath != "/openconfig-network-instance:network-instances/network-instance/protocols" {
+		log.Info("targetUriPath is redundant")
+		return err
+	}
+
+	log.Info("Populating ygot tree")
+	nisObj := (*inParams.ygRoot).(*ocbinds.Device).NetworkInstances
+	var ok bool = false
+
+	if nisObj == nil {
+		ygot.BuildEmptyTree(nisObj)
+	}
+ 	var niObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance	
+	if niObj, ok = nisObj.NetworkInstance["default"]; !ok {
+		niObj, _ = nisObj.NewNetworkInstance("default")
+		ygot.BuildEmptyTree(niObj)
+	}
+
+	if niObj.Protocols == nil {
+		ygot.BuildEmptyTree(niObj.Protocols)
+	}
+
+	protocolsObj := niObj.Protocols 
+	var name string = "100"
+	proObj, _ :=  protocolsObj.NewProtocol(ocbinds.OpenconfigPolicyTypes_INSTALL_PROTOCOL_TYPE_BGP, name)
+	log.Info("Name:",  *proObj.Name1)
+	ygot.BuildEmptyTree(proObj)
+	log.Info("Name2:",  *proObj.Name1)
+
+	log.Info("----- 1 -----")
+	ygot.BuildEmptyTree(proObj.Config)
+	log.Info("----- 2 -----")
+	id := ocbinds.OpenconfigPolicyTypes_INSTALL_PROTOCOL_TYPE_BGP
+	log.Info("----- 3 -----")
+	proObj.Config.Identifier = id
+	log.Info("----- 4-----")
+	proObj.Config.Name = &name
+
+	xfm_show_bgp_nbrs(proObj)
+	log.Info("----- done -----")
+
+	log.Info("JJ Did we get any output?")
+	return err
 }
 
 
