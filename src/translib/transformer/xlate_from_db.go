@@ -46,8 +46,11 @@ func xfmrHandlerFunc(inParams XfmrParams) (map[string]interface{}, error) {
         return result, err
     }
 
+	log.Info("Before schema load")
     ocbSch, _  := ocbinds.Schema()
+	log.Info("After schema load")
     schRoot    := ocbSch.RootSchema()
+	log.Info("After RootSchema load")
     device     := (*inParams.ygRoot).(*ocbinds.Device)
 
     path, _ := ygot.StringToPath(inParams.uri, ygot.StructuredPath, ygot.StringSlicePath)
@@ -714,6 +717,7 @@ func dbDataToYangJsonCreate(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db
 						resultMap[cname] = cmap
 						break
 					}
+					break
 				}
 				err    := yangDataFill(dbs, ygRoot, uri, reqXpath, dbDataMap, resultMap, tableName, keyName, cdb, IsValidate)
                                 if err != nil {

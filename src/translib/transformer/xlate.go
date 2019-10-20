@@ -354,6 +354,7 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data m
 			cdb = xYangSpecMap[xpath].dbIndex
 		}
 	}
+	log.Info("XlateFromDb called")
 	payload, err := dbDataToYangJsonCreate(uri, ygRoot, dbs, &dbData, cdb)
 	log.Info("Payload generated:", payload)
 
