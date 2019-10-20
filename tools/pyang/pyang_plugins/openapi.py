@@ -965,5 +965,5 @@ def isUriKeyInPayload(stmt, keyNodesList):
         _iterate(stmt)
     except Abort:
         result = True
-
+    
     return result

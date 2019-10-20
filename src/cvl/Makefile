@@ -51,12 +51,11 @@ $(BUILD_DIR)/.deps:
 	touch $@
 
 $(CVL_PKG):
-	@echo "JJ Building $@"
+	@echo "Building $@"
 	GOPATH=$(GOPATH) $(GO) build -v $(GOFLAGS) cvl
 	GOPATH=$(GOPATH) $(GO) install cvl
 
 $(CVL_TEST_BIN): $(TEST_FILES) $(SRC_FILES)
-	@echo ".deps=" $(BUILD_DIR)
 	GOPATH=$(GOPATH) $(GO) test -c -cover -coverpkg=cvl,cvl/internal/util,cvl/internal/yparser cvl -o $@
 	cp -r testdata $(@D)/
 
