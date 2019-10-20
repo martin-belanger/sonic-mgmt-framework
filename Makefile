@@ -24,7 +24,7 @@ BUILD_DIR := $(TOPDIR)/build
 export TOPDIR
 
 ifeq ($(BUILD_GOPATH),)
-export BUILD_GOPATH=$(TOPDIR)/gopkgs
+export BUILD_GOPATH=$(TOPDIR)/build/gopkgs
 endif
 
 export GOPATH=$(BUILD_GOPATH):$(TOPDIR)
@@ -135,7 +135,6 @@ install:
 	$(INSTALL) -D $(TOPDIR)/models/yang/annotations/*.yang $(DESTDIR)/usr/models/yang/
 	cp -rf $(TOPDIR)/build/rest_server/dist/ui/ $(DESTDIR)/rest_ui/
 	cp -rf $(TOPDIR)/build/cli $(DESTDIR)/usr/sbin/
-	cp -rf $(TOPDIR)/build/swagger_client_py/ $(DESTDIR)/usr/sbin/lib/
 	rsync -a --exclude="test" --exclude="docs" build/swagger_client_py $(DESTDIR)/usr/sbin/lib/swagger_client_py
 	cp -rf $(TOPDIR)/src/cvl/conf/cvl_cfg.json $(DESTDIR)/usr/sbin/cvl_cfg.json
 

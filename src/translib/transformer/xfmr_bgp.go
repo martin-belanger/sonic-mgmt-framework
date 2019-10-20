@@ -3,7 +3,10 @@ package transformer
 import (
     "errors"
     "reflect"
+	"translib/ocbinds"
     log "github.com/golang/glog"
+//	"github.com/openconfig/ygot/util"
+	"github.com/openconfig/ygot/ygot"
 )
 
 
@@ -171,10 +174,63 @@ var DbToYang_bgp_graceful_restart_status_xfmr FieldXfmrDbtoYang = func(inParams 
 var DbToYang_protocols_table_transformer SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
 	var err error
 
-	//    intfsObj := getIntfsRoot(inParams.ygRoot)
-	//    pathInfo := NewPathInfo(inParams.uri)
-
 	log.Info("JJ DbToYang_protocols - uri", inParams.uri)
 
+	//    intfsObj := getIntfsRoot(inParams.ygRoot)
+	//    pathInfo := NewPathInfo(inParams.uri)
+	targetUriPath, err := getYangPathFromUri(inParams.uri)
+	log.Info("targetUriPath is ", targetUriPath)
+
+	if targetUriPath != "/openconfig-network-instance:network-instances/network-instance/protocols" {
+		log.Info("targetUriPath is redundant")
+		return err
+	}
+
+	log.Info("Populating ygot tree")
+	nisObj := (*inParams.ygRoot).(*ocbinds.Device).NetworkInstances
+	var ok bool = false
+
+	if nisObj == nil {
+		ygot.BuildEmptyTree(nisObj)
+	}
+ 	var niObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance	
+	if niObj, ok = nisObj.NetworkInstance["default"]; !ok {
+		niObj, _ = nisObj.NewNetworkInstance("default")
+		ygot.BuildEmptyTree(niObj)
+	}
+
+	if niObj.Protocols == nil {
+		ygot.BuildEmptyTree(niObj.Protocols)
+	}
+
+	protocolsObj := niObj.Protocols 
+	var name string = "100"
+	proObj, _ :=  protocolsObj.NewProtocol(ocbinds.OpenconfigPolicyTypes_INSTALL_PROTOCOL_TYPE_BGP, name)
+	log.Info("Name:",  *proObj.Name)
+	ygot.BuildEmptyTree(proObj)
+	log.Info("Name2:",  *proObj.Name)
+
+	log.Info("----- 1 -----")
+	ygot.BuildEmptyTree(proObj.Config)
+	log.Info("----- 2 -----")
+	id := ocbinds.OpenconfigPolicyTypes_INSTALL_PROTOCOL_TYPE_BGP
+	log.Info("----- 3 -----")
+	proObj.Config.Identifier = id
+	log.Info("----- 4-----")
+	proObj.Config.Name = &name
+	log.Info("----- done -----")
+	return err
+
+	ygot.BuildEmptyTree(proObj.Bgp)
+//	ygot.BuildEmptyTree(proObj.Bgp.Global)
+//	ygot.BuildEmptyTree(proObj.Bgp.Global.Config)
+  
+	cfgObj := proObj.Bgp.Global.Config
+	var as uint32 = 100
+	var routerId string = "1.1.1.11"
+	cfgObj.As = &as
+	cfgObj.RouterId = &routerId
+
+	log.Info("JJ Did we get any output?")
 	return err
 }
