@@ -131,7 +131,7 @@ def generate_body(func, args):
     # Config min-links for port-channel
     elif func.__name__ == 'patch_openconfig_if_aggregate_interfaces_interface_aggregation_config_min_links':
         keypath = [ args[0] ]
-        body = { "openconfig-if-aggregate:min-links": args[1] }
+        body = { "openconfig-if-aggregate:min-links": int(args[1]) }
 
     # Config fallback mode for port-channel
     elif func.__name__ == 'patch_dell_intf_augments_interfaces_interface_aggregation_config_fallback':

@@ -296,6 +296,9 @@ func (app *IntfApp) getSpecificIfVlanAttr(targetUriPath *string, ifKey *string, 
 		if e != nil {
 			return true, e
 		}
+		if accessVlanName == nil {
+			return true, nil
+		}
 		vlanName := *accessVlanName
 		vlanIdStr := vlanName[len("Vlan"):len(vlanName)]
 		vlanId, err := strconv.Atoi(vlanIdStr)
@@ -1193,6 +1196,14 @@ func (app *IntfApp) processGetSpecificIntf(dbs [db.MaxDB]*db.DB, targetUriPath *
 			}
 
 			ifInfo := intfObj.Interface[ifKey]
+			/*  Attribute level handling is done at the top and returned. Any container level handling
+			    needs to be updated here. This is done, just to avoid un-necessary building of tree for any
+			    incoming request */
+			/* TODO: Need to handle these conditions in a cleaner way */
+			if *app.ygotTarget != ifInfo && *app.ygotTarget != ifInfo.Config && *app.ygotTarget != ifInfo.State &&
+				*app.ygotTarget != ifInfo.State.Counters {
+				return GetResponse{Payload: payload}, errors.New("Requested get type not supported!")
+			}
 			app.processBuildTree(ifInfo, &ifKey)
 
 			if *app.ygotTarget == ifInfo {
@@ -1205,6 +1216,10 @@ func (app *IntfApp) processGetSpecificIntf(dbs [db.MaxDB]*db.DB, targetUriPath *
 				} else if *app.ygotTarget == ifInfo.State {
 					dummyifInfo.State = ifInfo.State
 					payload, err = dumpIetfJson(dummyifInfo, false)
+				} else if *app.ygotTarget == ifInfo.State.Counters {
+					dummyifStateInfo := &ocbinds.OpenconfigInterfaces_Interfaces_Interface_State{}
+					dummyifStateInfo.Counters = ifInfo.State.Counters
+					payload, err = dumpIetfJson(dummyifStateInfo, false)
 				} else {
 					log.Info("Not supported get type!")
 					err = errors.New("Requested get-type not supported!")
