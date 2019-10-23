@@ -59,10 +59,10 @@ type vlanData struct {
 }
 
 type lagData struct {
-	lagTs       *db.TableSpec
-	lagMemberTs *db.TableSpec
-	lagTblTs    *db.TableSpec
-	lagIPTs     *db.TableSpec
+	lagTs              *db.TableSpec
+	lagMemberTs        *db.TableSpec
+	lagTblTs           *db.TableSpec
+	lagIPTs            *db.TableSpec
 	lagMembersTableMap map[string]map[string]dbEntry
 }
 
@@ -82,27 +82,27 @@ type intfData struct {
 }
 
 type IntfApp struct {
-    path       *PathInfo
-    reqData    []byte
-    ygotRoot   *ygot.GoStruct
-    ygotTarget *interface{}
+	path       *PathInfo
+	reqData    []byte
+	ygotRoot   *ygot.GoStruct
+	ygotTarget *interface{}
 
-    respJSON  interface{}
-    allIpKeys []db.Key
+	respJSON  interface{}
+	allIpKeys []db.Key
 
-    appDB      *db.DB
-    countersDB *db.DB
-    configDB   *db.DB
+	appDB      *db.DB
+	countersDB *db.DB
+	configDB   *db.DB
 
-    intfType ifType
-    mode     intfModeCfgAlone
+	intfType ifType
+	mode     intfModeCfgAlone
 
-    intfD intfData
-    vlanD vlanData
-    lagD lagData
+	intfD intfData
+	vlanD vlanData
+	lagD  lagData
 
-    ifTableMap map[string]dbEntry
-    ifIPTableMap   map[string]map[string]dbEntry
+	ifTableMap   map[string]dbEntry
+	ifIPTableMap map[string]map[string]dbEntry
 }
 
 func init() {
@@ -345,30 +345,30 @@ func (app *IntfApp) processCreate(d *db.DB) (SetResponse, error) {
 }
 
 func (app *IntfApp) processUpdate(d *db.DB) (SetResponse, error) {
-    var err error
-    var resp SetResponse
+	var err error
+	var resp SetResponse
 
-    log.Info("processUpdate:intf:path =", app.path)
-    log.Info("ProcessUpdate: Target Type is " + reflect.TypeOf(*app.ygotTarget).Elem().Name())
+	log.Info("processUpdate:intf:path =", app.path)
+	log.Info("ProcessUpdate: Target Type is " + reflect.TypeOf(*app.ygotTarget).Elem().Name())
 
-    switch app.intfType {
-        case ETHERNET:
-            err = app.processUpdatePhyIntf(d)
-            if err != nil {
-                return resp, err
-            }
-        case VLAN:
-            err = app.processUpdateVlanIntf(d)
-            if err != nil {
-                return resp, err
-            }
-        case LAG:
-            err = app.processUpdateLagIntf(d)
-            if err != nil {
-                return resp, err
-            }
-    }
-    return resp, err
+	switch app.intfType {
+	case ETHERNET:
+		err = app.processUpdatePhyIntf(d)
+		if err != nil {
+			return resp, err
+		}
+	case VLAN:
+		err = app.processUpdateVlanIntf(d)
+		if err != nil {
+			return resp, err
+		}
+	case LAG:
+		err = app.processUpdateLagIntf(d)
+		if err != nil {
+			return resp, err
+		}
+	}
+	return resp, err
 }
 
 func (app *IntfApp) processReplace(d *db.DB) (SetResponse, error) {
@@ -406,25 +406,25 @@ func (app *IntfApp) processDelete(d *db.DB) (SetResponse, error) {
 
 func (app *IntfApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 
-    var err error
-    var payload []byte
-    pathInfo := app.path
+	var err error
+	var payload []byte
+	pathInfo := app.path
 
-    log.Infof("Received GET for path %s; template: %s vars=%v", pathInfo.Path, pathInfo.Template, pathInfo.Vars)
-    app.appDB = dbs[db.ApplDB]
-    app.countersDB = dbs[db.CountersDB]
-    app.configDB = dbs[db.ConfigDB]
+	log.Infof("Received GET for path %s; template: %s vars=%v", pathInfo.Path, pathInfo.Template, pathInfo.Vars)
+	app.appDB = dbs[db.ApplDB]
+	app.countersDB = dbs[db.CountersDB]
+	app.configDB = dbs[db.ConfigDB]
 
-    targetUriPath, err := getYangPathFromUri(app.path.Path)
-    log.Info("URI Path = ", targetUriPath)
+	targetUriPath, err := getYangPathFromUri(app.path.Path)
+	log.Info("URI Path = ", targetUriPath)
 
-    if isSubtreeRequest(targetUriPath, "/openconfig-interfaces:interfaces/interface") {
-            return app.processGetSpecificIntf(dbs, &targetUriPath)
-    }
-    if isSubtreeRequest(targetUriPath, "/openconfig-interfaces:interfaces") {
-            return app.processGetAllInterfaces(dbs)
-    }
-    return GetResponse{Payload: payload}, err
+	if isSubtreeRequest(targetUriPath, "/openconfig-interfaces:interfaces/interface") {
+		return app.processGetSpecificIntf(dbs, &targetUriPath)
+	}
+	if isSubtreeRequest(targetUriPath, "/openconfig-interfaces:interfaces") {
+		return app.processGetAllInterfaces(dbs)
+	}
+	return GetResponse{Payload: payload}, err
 }
 
 func (app *IntfApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, error) {

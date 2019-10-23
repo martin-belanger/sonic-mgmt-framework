@@ -173,16 +173,16 @@ func (app *IntfApp) validateVlanExists(d *db.DB, vlanName *string) error {
 
 /* Validate whether LAG exists in DB */
 func (app *IntfApp) validateLagExists(d *db.DB, lagName *string) error {
-    if len(*lagName) == 0 {
-        return errors.New("Length of Lag name is zero")
-    }
-    entry, err := d.GetEntry(app.lagD.lagTs, db.Key{Comp: []string{*lagName}})
-    log.Info("Lag Entry found:" ,entry)
-    if err != nil || !entry.IsPopulated() {
-        errStr := "Invalid Lag:" + *lagName
-        return errors.New(errStr)
-    }
-    return nil
+	if len(*lagName) == 0 {
+		return errors.New("Length of Lag name is zero")
+	}
+	entry, err := d.GetEntry(app.lagD.lagTs, db.Key{Comp: []string{*lagName}})
+	log.Info("Lag Entry found:", entry)
+	if err != nil || !entry.IsPopulated() {
+		errStr := "Invalid Lag:" + *lagName
+		return errors.New(errStr)
+	}
+	return nil
 }
 
 /* Validate whether physical interface is valid or not */

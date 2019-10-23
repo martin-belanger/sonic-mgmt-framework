@@ -40,7 +40,12 @@ module sonic-portchannel {
                 }
 
                 leaf mtu {
-                    type uint16;
+                    type uint32 {
+                        range "1312..9216" {
+                            error-message "Invalid MTU value";
+                            error-app-tag mtu-invalid;
+                        }
+                    }
                 }
 
                 leaf min_links {
@@ -53,9 +58,9 @@ module sonic-portchannel {
             }
         }
 
-        container PORTCHANNEL_MEMBER { 
+        container PORTCHANNEL_MEMBER {
 
-            list PORTCHANNEL_MEMBER_LIST { 
+            list PORTCHANNEL_MEMBER_LIST {
                 key "name ifname";
 
                 leaf name {
@@ -86,7 +91,12 @@ module sonic-portchannel {
                 }
 
                 leaf mtu {
-                    type uint16;
+                    type uint32 {
+                        range "1312..9216" {
+                            error-message "Invalid MTU value";
+                            error-app-tag mtu-invalid;
+                        }
+                    }
                 }
 
                 leaf active {
@@ -103,7 +113,7 @@ module sonic-portchannel {
             }
         }
 
-        container LAG_MEMBER_TABLE { 
+        container LAG_MEMBER_TABLE {
             list LAG_MEMBER_TABLE_LIST {
                 key "name ifname";
 
@@ -118,7 +128,7 @@ module sonic-portchannel {
                         path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
                     }
                 }
-            }  
+            }
         }
     }
 }

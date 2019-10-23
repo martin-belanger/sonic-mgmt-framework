@@ -1,42 +1,42 @@
 module dell-intf-augments {
 
-  yang-version "1";
+    yang-version "1";
 
-  namespace "http://openconfig.net/yang/interfaces/aggregate";
-  
-  prefix "if-agmnt";
+    namespace "http://openconfig.net/yang/interfaces/aggregate";
 
-  import openconfig-interfaces { prefix oc-if; }
-  import openconfig-if-aggregate { prefix oc-lag; }
+    prefix "if-agmnt";
 
-  // meta
-  organization "OpenConfig working group";
+    import openconfig-interfaces { prefix oc-if; }
+    import openconfig-if-aggregate { prefix oc-lag; }
 
-  contact
-    "OpenConfig working group
-    netopenconfig@googlegroups.com";
+    // meta
+    organization "OpenConfig working group";
 
-  description
-    "Model for managing aggregated (aka bundle, LAG) interfaces.";
-     
-  revision 2019-10-03 {
+    contact
+        "OpenConfig working group
+        netopenconfig@googlegroups.com";
+
     description
-      "Initial augment file.";
-  }
+        "Model for managing aggregated (aka bundle, LAG) interfaces.";
 
-  // augment statements
+    revision 2019-10-03 {
+        description
+            "Initial augment file.";
+    }
 
-  augment "/oc-if:interfaces/oc-if:interface/oc-lag:aggregation/oc-lag:config" {
-    leaf fallback {
-      type boolean;
-      description "Indicating whether lacp fallback is enabled or not";
+    // augment statements
+
+    augment "/oc-if:interfaces/oc-if:interface/oc-lag:aggregation/oc-lag:config" {
+        leaf fallback {
+            type boolean;
+            description "Indicating whether lacp fallback is enabled or not";
+        }
     }
-  }
-  augment "/oc-if:interfaces/oc-if:interface/oc-lag:aggregation/oc-lag:state" {
-    leaf fallback {
-      type boolean;
-      description "Fallback status on this interface";
+    augment "/oc-if:interfaces/oc-if:interface/oc-lag:aggregation/oc-lag:state" {
+        leaf fallback {
+            type boolean;
+            description "Fallback status on this interface";
+        }
     }
-  }
 
 }

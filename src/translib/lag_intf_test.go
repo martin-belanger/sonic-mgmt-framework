@@ -22,96 +22,95 @@ import (
 	"errors"
 	"fmt"
 	"testing"
-        "time"
+	"time"
 	db "translib/db"
 )
 
 func init() {
-    fmt.Println("+++++  Init PortChannel_Intf_test  +++++")
+	fmt.Println("+++++  Init PortChannel_Intf_test  +++++")
 }
 
 func Test_LagIntfOperations(t *testing.T) {
 
-    fmt.Println("+++++  Start PorChannel Testing  +++++")
+	fmt.Println("+++++  Start PorChannel Testing  +++++")
 
-    url := "/openconfig-interfaces:interfaces/interface[name=PortChannel100]"
-    time.Sleep(2 * time.Second)
-    t.Run("Create_PortChannel(PATCH)", processSetRequest(url, emptyJson, "PATCH", false))
-    time.Sleep(1 * time.Second)
-    fmt.Println("+++++  Done PorChannel Creation  +++++")
+	url := "/openconfig-interfaces:interfaces/interface[name=PortChannel100]"
+	time.Sleep(2 * time.Second)
+	t.Run("Create_PortChannel(PATCH)", processSetRequest(url, emptyJson, "PATCH", false))
+	time.Sleep(1 * time.Second)
+	fmt.Println("+++++  Done PorChannel Creation  +++++")
 
-    stateUrl := url + "/state"
-    t.Run("Verify_PortChannel_Create", processGetRequest(stateUrl, intfStateGetJsonResponse, false))
+	stateUrl := url + "/state"
+	t.Run("Verify_PortChannel_Create", processGetRequest(stateUrl, intfStateGetJsonResponse, false))
 
-    // Set MTU
-    mtuUrl := url + "/config/mtu"
-    t.Run("Configure PortChannel MTU", processSetRequest(mtuUrl, mtuJson, "PATCH", false))
-    time.Sleep(1 * time.Second)
-    fmt.Println("+++++  Done PorChannel MTU configuration  +++++")
+	// Set MTU
+	mtuUrl := url + "/config/mtu"
+	t.Run("Configure PortChannel MTU", processSetRequest(mtuUrl, mtuJson, "PATCH", false))
+	time.Sleep(1 * time.Second)
+	fmt.Println("+++++  Done PorChannel MTU configuration  +++++")
 
-    // Get MTU
-    stateMtu := stateUrl + "/mtu"
-    t.Run("Verify_PortChannel_MTU_Set", processGetRequest(stateMtu, mtuJson, false))
+	// Get MTU
+	stateMtu := stateUrl + "/mtu"
+	t.Run("Verify_PortChannel_MTU_Set", processGetRequest(stateMtu, mtuJson, false))
 
-    adminUrl := url + "/config/enabled"
-    t.Run("Configure PortChannel admin-status", processSetRequest(adminUrl, enabledJson, "PATCH", false))
-    time.Sleep(1 * time.Second)
-    fmt.Println("+++++  Done PorChannel admin-status configuration  +++++")
+	adminUrl := url + "/config/enabled"
+	t.Run("Configure PortChannel admin-status", processSetRequest(adminUrl, enabledJson, "PATCH", false))
+	time.Sleep(1 * time.Second)
+	fmt.Println("+++++  Done PorChannel admin-status configuration  +++++")
 
-    // Get admin-status  
-    stateAdmin := stateUrl + "/admin-status"
-    t.Run("Verify_PortChannel_AdminStatus_Set", processGetRequest(stateAdmin, adminJson, false))
+	// Get admin-status
+	stateAdmin := stateUrl + "/admin-status"
+	t.Run("Verify_PortChannel_AdminStatus_Set", processGetRequest(stateAdmin, adminJson, false))
 
-    aggregationUrl := url + "/openconfig-if-aggregate:aggregation"
+	aggregationUrl := url + "/openconfig-if-aggregate:aggregation"
 
-    // Set min-links
-    minLinksUrl := aggregationUrl + "/config/min-links"
-    t.Run("Configure PortChannel min-links", processSetRequest(minLinksUrl, minLinksJson, "PATCH", false))
-    fmt.Println("+++++  Done PorChannel min-links configuration  +++++")
+	// Set min-links
+	minLinksUrl := aggregationUrl + "/config/min-links"
+	t.Run("Configure PortChannel min-links", processSetRequest(minLinksUrl, minLinksJson, "PATCH", false))
+	fmt.Println("+++++  Done PorChannel min-links configuration  +++++")
 
-    // Get min-links
-    minLinksGetUrl := aggregationUrl + "/state/min-links"
-    t.Run("Verify_PortChannel_MinLinks_Set", processGetRequest(minLinksGetUrl, minLinksResp, false))
+	// Get min-links
+	minLinksGetUrl := aggregationUrl + "/state/min-links"
+	t.Run("Verify_PortChannel_MinLinks_Set", processGetRequest(minLinksGetUrl, minLinksResp, false))
 
-    // Set fallback
-    fallbackUrl := aggregationUrl + "/config/dell-intf-augments:fallback"
-    t.Run("Configure PortChannel Fallback", processSetRequest(fallbackUrl, fallbackJson, "PATCH", false))
+	// Set fallback
+	fallbackUrl := aggregationUrl + "/config/dell-intf-augments:fallback"
+	t.Run("Configure PortChannel Fallback", processSetRequest(fallbackUrl, fallbackJson, "PATCH", false))
 
-    // Get fallback mode
-    fallbackGetUrl := aggregationUrl + "/state/dell-intf-augments:fallback"
-    t.Run("Verify_portchannel_Fallback_Set", processGetRequest(fallbackGetUrl, fallbackResp, false))
+	// Get fallback mode
+	fallbackGetUrl := aggregationUrl + "/state/dell-intf-augments:fallback"
+	t.Run("Verify_portchannel_Fallback_Set", processGetRequest(fallbackGetUrl, fallbackResp, false))
 
-    // Set IP address
-    ipUrl := url + "/subinterfaces/subinterface[index=0]/openconfig-if-ip:ipv4/addresses/address[ip=11.1.1.1]/config"
-    t.Run("Configure PortChannel IPv4 address", processSetRequest(ipUrl, ipJson, "PATCH", false))
-    fmt.Println("+++++  Done PorChannel IPv4 configuration  +++++")
+	// Set IP address
+	ipUrl := url + "/subinterfaces/subinterface[index=0]/openconfig-if-ip:ipv4/addresses/address[ip=11.1.1.1]/config"
+	t.Run("Configure PortChannel IPv4 address", processSetRequest(ipUrl, ipJson, "PATCH", false))
+	fmt.Println("+++++  Done PorChannel IPv4 configuration  +++++")
 
-    // Set IPv6 address
-    ip6Url := url + "/subinterfaces/subinterface[index=0]/openconfig-if-ip:ipv6/addresses/address[ip=a::e]/config"
-    t.Run("Configure PortChannel IPv6 address", processSetRequest(ip6Url, ip6Json, "PATCH", false))
-    fmt.Println("+++++  Done PorChannel IPv6 configuration  +++++")
+	// Set IPv6 address
+	ip6Url := url + "/subinterfaces/subinterface[index=0]/openconfig-if-ip:ipv6/addresses/address[ip=a::e]/config"
+	t.Run("Configure PortChannel IPv6 address", processSetRequest(ip6Url, ip6Json, "PATCH", false))
+	fmt.Println("+++++  Done PorChannel IPv6 configuration  +++++")
 
-    // Add member ports
-    memUrl := "/openconfig-interfaces:interfaces/interface[name=Ethernet4]" + "/openconfig-if-ethernet:ethernet/config/openconfig-if-aggregate:aggregate-id"
-    t.Run("Configure PortChannel Member Add", processSetRequest(memUrl, memAddJson, "PATCH", false))
+	// Add member ports
+	memUrl := "/openconfig-interfaces:interfaces/interface[name=Ethernet4]" + "/openconfig-if-ethernet:ethernet/config/openconfig-if-aggregate:aggregate-id"
+	t.Run("Configure PortChannel Member Add", processSetRequest(memUrl, memAddJson, "PATCH", false))
 
-    // Get member ports
-    memGetUrl := aggregationUrl + "/state/member"
-    t.Run("Verify_PortChannel_Member_Add", processGetRequest(memGetUrl, memRespJson, false))
+	// Get member ports
+	memGetUrl := aggregationUrl + "/state/member"
+	t.Run("Verify_PortChannel_Member_Add", processGetRequest(memGetUrl, memRespJson, false))
 
-    // Remove member ports
-    t.Run("PortChannel_Member_Remove", processDeleteRequest(memUrl))
-    time.Sleep(1 * time.Second)
+	// Remove member ports
+	t.Run("PortChannel_Member_Remove", processDeleteRequest(memUrl))
+	time.Sleep(1 * time.Second)
 
-    // Delete PortChannel
-    t.Run("Delete_PortChannel", processDeleteRequest(url))
+	// Delete PortChannel
+	t.Run("Delete_PortChannel", processDeleteRequest(url))
 
-    time.Sleep(2 * time.Second)
-    t.Run("Verify_PortChannel_Delete", processGetRequest(stateUrl, "", true))
+	time.Sleep(2 * time.Second)
+	t.Run("Verify_PortChannel_Delete", processGetRequest(stateUrl, "", true))
 }
 
-
-// This will delete configs in PortChannel table, PORTCHANNEL_MEMBER table and PORTCHANNEL_INTERFACE table 
+// This will delete configs in PortChannel table, PORTCHANNEL_MEMBER table and PORTCHANNEL_INTERFACE table
 func clearLagDataFromDb() error {
 	var err error
 	lagTable := db.TableSpec{Name: "PORTCHANNEL"}

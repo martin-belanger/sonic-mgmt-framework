@@ -51,7 +51,6 @@ func TestMain(m *testing.M) {
 	os.Exit(ret)
 }
 
-
 func processGetRequest(url string, expectedRespJson string, errorCase bool) func(*testing.T) {
 	return func(t *testing.T) {
 		response, err := Get(GetRequest{url})
@@ -94,7 +93,6 @@ func processDeleteRequest(url string) func(*testing.T) {
 	}
 }
 
-
 func getConfigDb() *db.DB {
 	configDb, _ := db.NewDB(db.Options{
 		DBNo:               db.ConfigDB,
@@ -105,6 +103,5 @@ func getConfigDb() *db.DB {
 
 	return configDb
 }
-
 
 var emptyJson string = "{}"
