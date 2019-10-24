@@ -77,6 +77,7 @@ def run(func, args):
         else:
             # Get Command Output
             api_response = aa.api_client.sanitize_for_serialization(api_response)
+            laglst =[]
             if 'sonic-portchannel:LAG_TABLE' in api_response:
                 value = api_response['sonic-portchannel:LAG_TABLE']
                 if 'LAG_TABLE_LIST' in value:
