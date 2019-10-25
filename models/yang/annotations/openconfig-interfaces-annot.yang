@@ -79,6 +79,11 @@ module openconfig-interfaces-annot {
             sonic-ext:field-transformer "intf_eth_port_speed_xfmr";
         }
     }
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth:config/oc-lag:aggregate-id {
+        deviate add {
+            sonic-ext:field-transformer "intf_eth_port_aggregate_xfmr";
+        }
+    }
     deviation /oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth:state {
         deviate add {
             sonic-ext:db-name "APPL_DB";
