@@ -223,7 +223,7 @@ func (app *CommonApp) translateCRUDCommon(d *db.DB, opcode int) ([]db.WatchKeys,
 	var tblsToWatch []*db.TableSpec
 	var OrdTblList []string
 	var moduleNm string
-	log.Info("translateCRUDCommon:path =", app.pathInfo.Path)
+	log.Info("****translateCRUDCommon:path =", app.pathInfo.Path)
 
 	/* retrieve schema table order for incoming module name request */
 	moduleNm, err = transformer.GetModuleNmFromPath(app.pathInfo.Path)
@@ -231,13 +231,18 @@ func (app *CommonApp) translateCRUDCommon(d *db.DB, opcode int) ([]db.WatchKeys,
 		log.Error("GetModuleNmFromPath() failed")
 		return keys, err
 	}
-	log.Info("getModuleNmFromPath() returned module name = ", moduleNm)
+	log.Info("****getModuleNmFromPath() returned module name = ", moduleNm)
 	OrdTblList, err = transformer.GetOrdDBTblList(moduleNm)
+/*
 	if (err != nil) || (len(OrdTblList) == 0) {
 		log.Error("GetOrdDBTblList() failed")
 		return keys, err
 	}
-
+*/
+        tbl_list := []string {"PORT", "PORTCHANNEL", "PORTCHANNEL_MEMBER", "PORTCHANNEL_INTERFACE", "INTERFACE", "MGMT_PORT", "MGMT_INTERFCAE"}
+        if moduleNm == "openconfig-interfaces" {
+            OrdTblList = tbl_list
+        }
 	log.Info("GetOrdDBTblList() returned ordered table list = ", OrdTblList)
 	app.cmnAppOrdTbllist = OrdTblList
 
@@ -252,7 +257,7 @@ func (app *CommonApp) translateCRUDCommon(d *db.DB, opcode int) ([]db.WatchKeys,
 	// translate yang to db
 	result, err := transformer.XlateToDb(app.pathInfo.Path, opcode, d, (*app).ygotRoot, (*app).ygotTarget)
 	fmt.Println(result)
-	log.Info("transformer.XlateToDb() returned", result)
+	log.Info("******transformer.XlateToDb() returned", result)
 
 	if err != nil {
 		log.Error(err)

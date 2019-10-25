@@ -100,11 +100,11 @@ func mapFillData(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, dbKey st
         log.Errorf("Table key for yang path(\"%v\") not found.", xpath)
         return errors.New("Invalid table key")
     }
-
+/*
     if xpathInfo.isKey {
         return nil
     }
-
+*/
     tableName := ""
     if xpathInfo.xfmrTbl != nil {
 	    inParams := formXfmrInputRequest(d, dbs, db.MaxDB, ygRoot, uri, oper, "", nil, "")
@@ -153,6 +153,21 @@ func mapFillData(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, dbKey st
             }
         }
         return nil
+    }
+
+    if xpathInfo.isKey {
+        _, ok := result[tableName]
+            if !ok {
+                result[tableName] = make(map[string]db.Value)
+            }
+
+        _, ok = result[tableName][dbKey]
+            if !ok {
+                result[tableName][dbKey] = db.Value{Field: make(map[string]string)}
+            }
+
+        result[tableName][dbKey].Field["NULL"] = "NULL"
+            return nil
     }
 
     if len(xpathInfo.fieldName) == 0 {

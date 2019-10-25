@@ -11,6 +11,7 @@ module openconfig-interfaces-annot {
     import openconfig-extensions { prefix oc-ext; }
     import openconfig-if-ethernet {prefix oc-eth; }
     import openconfig-if-ip {prefix oc-ip; }
+    import openconfig-if-aggregate { prefix oc-lag; }
 
 
     deviation /oc-intf:interfaces/oc-intf:interface {
@@ -27,21 +28,34 @@ module openconfig-interfaces-annot {
 
     deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:config/oc-intf:name {
         deviate add {
+            //sonic-ext:field-name "name1";
             sonic-ext:field-transformer "intf_name_xfmr";
         }
     }
-
     deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:config/oc-intf:enabled {
         deviate add {
             sonic-ext:field-transformer "intf_enabled_xfmr";
         }
     }
     
+    deviation /oc-if:interfaces/oc-if:interface/oc-lag:aggregation {
+      deviate add {
+            sonic-ext:db-name "CONFIG_DB";
+      }
+    }
+
+    deviation /oc-if:interfaces/oc-if:interface/oc-lag:aggregation/oc-lag:state {
+      deviate add {
+            sonic-ext:redis-db-name "APPL_DB";
+      }
+    }
+
     deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:state {
         deviate add {
             sonic-ext:db-name "APPL_DB";
         }
     }
+
     deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:state/oc-intf:name {
         deviate add {
             sonic-ext:field-transformer "intf_name_xfmr";
@@ -77,6 +91,11 @@ module openconfig-interfaces-annot {
     deviation /oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth:config/oc-eth:port-speed {
         deviate add {
             sonic-ext:field-transformer "intf_eth_port_speed_xfmr";
+        }
+    }
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth:config {
+        deviate add {
+            sonic-ext:subtree-transformer "intf_eth_port_aggregate_xfmr";
         }
     }
     deviation /oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth:state {
@@ -118,4 +137,5 @@ module openconfig-interfaces-annot {
             sonic-ext:db-name "COUNTERS_DB";
         }
     }
+
 }
