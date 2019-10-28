@@ -14,7 +14,7 @@
          help="Show ztp status"
          >
          <ACTION>
-              python $SONIC_CLI_ROOT/sonic-cli-ztp.py get_openconfig_platform_components show_ztp.j2 ${__full_line}
+              python $SONIC_CLI_ROOT/sonic-cli-ztp.py get_openconfig_ztp_ztp_ztp_status show_ztp.j2 ${__full_line}
          </ACTION>
     </COMMAND>
 
