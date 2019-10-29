@@ -46,9 +46,6 @@ def generate_body(func, args):
     body = None
     keypath = []
     
-    if "po" in args[0][:2]:
-        args[0] = 'PortChannel'+args[0][2:]
-
     # Create interface
     if func.__name__ == 'patch_openconfig_interfaces_interfaces_interface':
        keypath = [ args[0] ]
