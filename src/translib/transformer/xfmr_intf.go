@@ -35,7 +35,6 @@ func init () {
     XlateFuncBind("DbToYang_intf_subintfs_xfmr", DbToYang_intf_subintfs_xfmr)
     XlateFuncBind("DbToYang_intf_get_counters_xfmr", DbToYang_intf_get_counters_xfmr)
 }
-
 const (
     PORT_INDEX         = "index"
     PORT_MTU           = "mtu"
@@ -191,6 +190,7 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
     if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/config") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/ethernet/config") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/config") {
+        log.Info("....I am here 1")
         tblList = append(tblList, intTbl.cfgDb.portTN)
     } else if  strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/state/counters") {
         tblList = append(tblList, intTbl.CountersHdl.CountersTN)
@@ -215,11 +215,14 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
         tblList = append(tblList, intTbl.cfgDb.intfTN)
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/ethernet") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet") {
-        tblList = append(tblList, intTbl.cfgDb.portTN)
-    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface") { //To be used for creation/deletion of interface
+        log.Info("....I am here 2")
         tblList = append(tblList, intTbl.cfgDb.portTN)
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/config/openconfig-if-aggregate:aggregate-id") {
+        log.Info("....I am here 4-----")
         tblList = append(tblList, intTbl.cfgDb.memTN)
+    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface") { //To be used for creation/deletion of interface
+        log.Info("....I am here 3---", targetUriPath)
+        tblList = append(tblList, intTbl.cfgDb.portTN)
     } else {
         err = errors.New("Invalid URI")
     }

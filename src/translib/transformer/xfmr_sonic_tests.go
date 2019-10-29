@@ -18,35 +18,43 @@
 
 package transformer
 
-const (
-	YANG_MODULE    = "module"
-	YANG_LIST      = "list"
-	YANG_CONTAINER = "container"
-	YANG_LEAF      = "leaf"
-	YANG_LEAF_LIST = "leaf-list"
-
-	YANG_ANNOT_DB_NAME    = "db-name"
-	YANG_ANNOT_TABLE_NAME = "table-name"
-	YANG_ANNOT_FIELD_NAME = "field-name"
-	YANG_ANNOT_KEY_DELIM  = "key-delimiter"
-	YANG_ANNOT_TABLE_XFMR = "table-transformer"
-	YANG_ANNOT_FIELD_XFMR = "field-transformer"
-	YANG_ANNOT_KEY_XFMR   = "key-transformer"
-	YANG_ANNOT_POST_XFMR  = "post-transformer"
-	YANG_ANNOT_SUBTREE_XFMR  = "subtree-transformer"
-	YANG_ANNOT_VALIDATE_FUNC = "get-validate"
-
-	REDIS_DB_TYPE_APPLN   = "APPL_DB"
-	REDIS_DB_TYPE_ASIC    = "ASIC_DB"
-	REDIS_DB_TYPE_CONFIG  = "CONFIG_DB"
-	REDIS_DB_TYPE_COUNTER = "COUNTERS_DB"
-	REDIS_DB_TYPE_LOG_LVL = "LOGLEVEL_DB"
-	REDIS_DB_TYPE_STATE   = "STATE_DB"
-	REDIS_DB_TYPE_FLX_COUNTER = "FLEX_COUNTER_DB"
-
-	XPATH_SEP_FWD_SLASH = "/"
-	XFMR_EMPTY_STRING   = ""
-	SONIC_TABLE_INDEX = 2
-	SONIC_MDL_PFX = "sonic"
-
+import (
+//	"bytes"
+//	"errors"
+//	"fmt"
+	"encoding/json"
+	"translib/tlerr"
+	"translib/db"
+	"github.com/golang/glog"
 )
+
+func init() {
+	XlateFuncBind("rpc_sum_cb", rpc_sum_cb)
+}
+
+var rpc_sum_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+	var err error
+	var operand struct {
+		Input struct {
+			Left int32 `json:"left"`
+			Right int32 `json:"right"`
+		} `json:"sonic-tests:input"`
+	}
+
+	err = json.Unmarshal(body, &operand)
+	if err != nil {
+		glog.Errorf("Failed to parse rpc input; err=%v", err)
+		return nil,tlerr.InvalidArgs("Invalid rpc input")
+	}
+
+	var sum struct {
+		Output struct {
+			Result int32 `json:"result"`
+		} `json:"sonic-tests:output"`
+	}
+
+	sum.Output.Result = operand.Input.Left + operand.Input.Right
+	result, err := json.Marshal(&sum)	
+	
+	return result, err
+}
