@@ -80,6 +80,12 @@ module openconfig-interfaces-annot {
     deviation /oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth:config {
         deviate add {
             sonic-ext:db-name "CONFIG_DB";
+            sonic-ext:subtree-transformer "intf_eth_port_aggregate_xfmr";
+        }
+    }
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth:config/oc-lag:aggregate-id {
+        deviate add {
+            sonic-ext:table-name "PORTCHANNEL_MEMBER";
         }
     }
     deviation /oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth:config/oc-eth:auto-negotiate {
@@ -90,11 +96,6 @@ module openconfig-interfaces-annot {
     deviation /oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth:config/oc-eth:port-speed {
         deviate add {
             sonic-ext:field-transformer "intf_eth_port_speed_xfmr";
-        }
-    }
-    deviation /oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth:config {
-        deviate add {
-            sonic-ext:subtree-transformer "intf_eth_port_aggregate_xfmr";
         }
     }
     deviation /oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth:state {

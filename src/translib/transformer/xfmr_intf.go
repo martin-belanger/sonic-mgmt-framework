@@ -187,9 +187,10 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
     log.Info("-----------------intTbl : ", intTbl)
     log.Info("TableXfmrFunc - targetUriPath : ", targetUriPath)
 
-    if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/config") ||
-        strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/ethernet/config") ||
-        strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/config") {
+    if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/config"){ //||
+      //  strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/ethernet/config") ||
+     //   strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/config") 
+ 
         log.Info("....I am here 1")
         tblList = append(tblList, intTbl.cfgDb.portTN)
     } else if  strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/state/counters") {
@@ -217,14 +218,13 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet") {
         log.Info("....I am here 2")
         tblList = append(tblList, intTbl.cfgDb.portTN)
-    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/config/openconfig-if-aggregate:aggregate-id") {
+/*    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/config/openconfig-if-aggregate:aggregate-id") {
         log.Info("....I am here 4-----")
         tblList = append(tblList, intTbl.cfgDb.memTN)
-    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface") { //To be used for creation/deletion of interface
+*/    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface") { //To be used for creation/deletion of interface
         log.Info("....I am here 3---", targetUriPath)
         tblList = append(tblList, intTbl.cfgDb.portTN)
-    } else {
-        err = errors.New("Invalid URI")
+    } else {       err = errors.New("Invalid URI")
     }
 
     log.Infof("TableXfmrFunc - uri(%v), tblList(%v)\r\n", inParams.uri, tblList);
