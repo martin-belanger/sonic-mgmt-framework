@@ -315,9 +315,7 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, jsonDat
 		log.Infof("1. Delete req: path(\"%v\"), key(\"%v\"), xpathPrefix(\"%v\"), tableName(\"%v\").", path, keyName, xpathPrefix, tableName)
 		spec, ok := xYangSpecMap[xpathPrefix]
 		if ok {
-                         log.Infof("=====================\r\n");
 			if len(spec.xfmrFunc) > 0 {
-                                log.Infof("2. Delete req: xfmr.")
 				var dbs [db.MaxDB]*db.DB
 				cdb := spec.dbIndex
 				inParams := formXfmrInputRequest(d, dbs, cdb, ygRoot, path, oper, "", nil, nil, txCache)
@@ -329,13 +327,11 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, path string, jsonDat
 				}
 			} else if spec.tableName != nil || len(tableName) > 0 {
                                 tbl := tableName
-                                log.Infof("3. Delete req: tbl(\"%v\").", tbl)
                                 if spec.tableName != nil {
                                     tbl = *spec.tableName
                                 }
 				result[tbl] = make(map[string]db.Value)
 				if len(keyName) > 0 {
-                                        log.Infof("4. Delete req: tbl(\"%v\"), key(\"%v\").", tbl, keyName)
 					result[tbl][keyName] = db.Value{Field: make(map[string]string)}
 					if spec.yangEntry != nil && spec.yangEntry.Node.Statement().Keyword == "leaf" {
 						result[tbl][keyName].Field[spec.fieldName] = ""
@@ -429,13 +425,20 @@ func dbMapDefaultFieldValFill(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri str
 							log.Infof("Update(\"%v\") default: tbl[\"%v\"]key[\"%v\"]fld[\"%v\"] = val(\"%v\").",
 							childXpath, tblName, dbKey, childNode.fieldName, childNode.defVal)
 							if len(childNode.xfmrFunc) > 0 {
-								inParams := formXfmrInputRequest(d, dbs, db.MaxDB, ygRoot, uri+"/"+childName, oper, "", nil, childNode.defVal, txCache)
-								ret, err := XlateFuncCall(yangToDbXfmrFunc(xYangSpecMap[childXpath].xfmrFunc), inParams)
-								if err == nil {
-									retData := ret[0].Interface().(map[string]string)
-									for f, v := range retData {
-										dataToDBMapAdd(tblName, dbKey, result, f, v)
+								childYangType := childNode.yangEntry.Type.Kind
+								_, defValPtr, err := DbToYangType(childYangType, childXpath, childNode.defVal)
+								if err == nil && defValPtr != nil {
+									inParams := formXfmrInputRequest(d, dbs, db.MaxDB, ygRoot, childXpath, oper, "", nil, defValPtr, txCache)
+									ret, err := XlateFuncCall(yangToDbXfmrFunc(xYangSpecMap[childXpath].xfmrFunc), inParams)
+									if err == nil {
+										retData := ret[0].Interface().(map[string]string)
+										for f, v := range retData {
+											dataToDBMapAdd(tblName, dbKey, result, f, v)
+										}
 									}
+								} else {
+									log.Infof("Failed to update(\"%v\") default: tbl[\"%v\"]key[\"%v\"]fld[\"%v\"] = val(\"%v\").",
+									childXpath, tblName, dbKey, childNode.fieldName, childNode.defVal)
 								}
 							} else {
 								mapFillDataUtil(d, ygRoot, oper, uri, childXpath, tblName, dbKey, result, childName, childNode.defVal, txCache)
@@ -594,11 +597,12 @@ func yangReqToDbMapCreate(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string,
 					if ret != nil {
 					    curKey = ret[0].Interface().(string)
 					}
-				} else if xYangSpecMap[xpath].keyName != nil {
+				} else if ok && xYangSpecMap[xpath].keyName != nil {
 					curKey = *xYangSpecMap[xpath].keyName
 				}
-                if (typeOfValue == reflect.Map || typeOfValue == reflect.Slice) && xYangSpecMap[xpath].yangDataType != "leaf-list" {
-                    if ok && xYangSpecMap[xpath] != nil && len(xYangSpecMap[xpath].xfmrFunc) > 0 {
+
+                if ok && (typeOfValue == reflect.Map || typeOfValue == reflect.Slice) && xYangSpecMap[xpath].yangDataType != "leaf-list" {
+                    if xYangSpecMap[xpath] != nil && len(xYangSpecMap[xpath].xfmrFunc) > 0 {
                         /* subtree transformer present */
 						curYgotNode, nodeErr := yangNodeForUriGet(curUri, ygRoot)
 						if nodeErr != nil {
