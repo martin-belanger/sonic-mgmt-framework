@@ -28,13 +28,13 @@ def generate_body(func, args):
     body = None
     # Get the rules of all ACL table entries.
 
-    if func.__name__ == 'get_openconfig_ztp_ztp_ztp_status':
-        keypath = []
+    #if func.__name__ == 'get_openconfig_ztp_ztp_ztp_status':
+    #    keypath = []
 
-    else:
-       body = {}
+    #else:
+    #   body = {}
 
-    return keypath,body
+    return [],body
 
 
 def run(func, args):
