@@ -13,12 +13,19 @@ module openconfig-interfaces-annot {
     import openconfig-vlan {prefix oc-vlan; }
     import openconfig-if-ip {prefix oc-ip; }
     import openconfig-if-aggregate { prefix oc-lag; }
+    import dell-intf-augments { prefix if-agmnt; }
 
 
     deviation /oc-intf:interfaces/oc-intf:interface {
         deviate add {
             sonic-ext:key-transformer "intf_tbl_key_xfmr";
             sonic-ext:table-transformer "intf_table_xfmr";
+        }
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:name {
+        deviate add {
+            sonic-ext:field-transformer "intf_name_empty_xfmr";
         }
     }
 
@@ -33,6 +40,7 @@ module openconfig-interfaces-annot {
             sonic-ext:field-transformer "intf_name_xfmr";
         }
     }
+
     deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:config/oc-intf:enabled {
         deviate add {
             sonic-ext:field-transformer "intf_enabled_xfmr";
@@ -47,8 +55,13 @@ module openconfig-interfaces-annot {
 
     deviation /oc-intf:interfaces/oc-intf:interface/oc-lag:aggregation/oc-lag:config/oc-lag:min-links {
         deviate add { 
-        //    sonic-ext:key-transformer "min_links_key_xfmr";
             sonic-ext:field-transformer "lag_min_links_xfmr";
+        }
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-lag:aggregation/oc-lag:config/if-agmnt:fallback {
+        deviate add { 
+            sonic-ext:field-transformer "lag_fallback_xfmr";
         }
     }
 

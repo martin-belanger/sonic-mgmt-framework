@@ -18,7 +18,7 @@ import (
 func init () {
     XlateFuncBind("intf_table_xfmr", intf_table_xfmr)
     XlateFuncBind("YangToDb_intf_name_xfmr", YangToDb_intf_name_xfmr)
-    XlateFuncBind("DbToYang_intf_name_xfmr", DbToYang_intf_name_xfmr)
+    XlateFuncBind("YangToDb_intf_name_empty_xfmr", YangToDb_intf_name_empty_xfmr)
     XlateFuncBind("YangToDb_intf_enabled_xfmr", YangToDb_intf_enabled_xfmr)
     XlateFuncBind("DbToYang_intf_enabled_xfmr", DbToYang_intf_enabled_xfmr)
     XlateFuncBind("DbToYang_intf_admin_status_xfmr", DbToYang_intf_admin_status_xfmr)
@@ -29,6 +29,7 @@ func init () {
     XlateFuncBind("DbToYang_intf_eth_port_speed_xfmr", DbToYang_intf_eth_port_speed_xfmr)
     XlateFuncBind("YangToDb_intf_eth_port_aggregate_xfmr", YangToDb_intf_eth_port_aggregate_xfmr)
     XlateFuncBind("YangToDb_lag_min_links_xfmr", YangToDb_lag_min_links_xfmr)
+    XlateFuncBind("YangToDb_lag_fallback_xfmr", YangToDb_lag_fallback_xfmr)
     //XlateFuncBind("YangToDb_min_links_key_xfmr", YangToDb_min_links_key_xfmr)
    // XlateFuncBind("DbToYang_intf_eth_port_aggregate_xfmr", DbToYang_intf_eth_port_aggregate_xfmr)
     XlateFuncBind("YangToDb_intf_ip_addr_xfmr", YangToDb_intf_ip_addr_xfmr)
@@ -243,10 +244,10 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
 /*    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-aggregate:aggregation/config/min-links") {
         log.Info("....min0links----------------")
         tblList = append(tblList, intTbl.cfgDb.portTN)
-/*    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/config/openconfig-if-aggregate:aggregate-id") {
+*/    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/config/openconfig-if-aggregate:aggregate-id") {
         log.Info("....I am here 4-----")
-        tblList = append(tblList, intTbl.cfgDb.memTN)
-*/  } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface") {
+        tblList = append(tblList, "PORTCHANNEL_MEMBER")
+  } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface") {
         log.Info("....here 3---", targetUriPath)
         tblList = append(tblList, intTbl.cfgDb.portTN)
     } else {       err = errors.New("Invalid URI")
@@ -266,17 +267,17 @@ var YangToDb_intf_name_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[s
     if strings.HasPrefix(ifName, VLAN) == true {
         vlanId := ifName[len("Vlan"):len(ifName)]
         res_map["vlanid"] = vlanId
+    } else if strings.HasPrefix(ifName, PORTCHANNEL) == true {
+        res_map["NULL"] = "NULL"
     }
 
     log.Info("YangToDb_intf_name_xfm: rres_map:", res_map)
     return res_map, err
 }
 
-
-var DbToYang_intf_name_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+var YangToDb_intf_name_empty_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
     var err error
-    res_map := make(map[string]interface{})
-    res_map["name"] =  inParams.key
     return res_map, err
 }
 
@@ -311,6 +312,20 @@ var YangToDb_lag_min_links_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (m
     minLinks, _ := inParams.param.(*uint16)
     log.Info("-----minLinks",*minLinks)
     res_map["min_links"] = strconv.Itoa(int(*minLinks))
+    return res_map, err
+}
+
+var YangToDb_lag_fallback_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    log.Info("-----fallback----------------")
+    pathInfo := NewPathInfo(inParams.uri)
+    ifName := pathInfo.Var("name")
+    log.Info("-----fallback----ifName", ifName)
+    res_map := make(map[string]string)
+    var err error
+
+    fallback, _ := inParams.param.(*bool)
+    log.Info("-----fallback",*fallback)
+    res_map["fallback"] = strconv.FormatBool(*fallback)
     return res_map, err
 }
 
