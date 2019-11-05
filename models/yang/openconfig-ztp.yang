@@ -24,6 +24,9 @@ module openconfig-ztp {
 	    leaf admin_mode {
 		type boolean;
 	     }
+	    leaf error {
+		type string;
+	     }
 
 	    leaf service {
 		type string;
@@ -51,6 +54,9 @@ module openconfig-ztp {
 		leaf sectionname {
 		    type string; 
 		}
+	        leaf error {
+		type string;
+	        }   
 		leaf status {
             	    type string; 
 		}
@@ -61,7 +67,7 @@ module openconfig-ztp {
 		    type yang:date-and-time; 
 		}
 		leaf exitcode {
-		    type uint32; 
+		    type uint64; 
 		}
 		leaf ignoreresult {
 		    type boolean; 
