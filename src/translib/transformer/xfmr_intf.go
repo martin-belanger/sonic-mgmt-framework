@@ -28,6 +28,8 @@ func init () {
     XlateFuncBind("YangToDb_intf_eth_port_speed_xfmr", YangToDb_intf_eth_port_speed_xfmr)
     XlateFuncBind("DbToYang_intf_eth_port_speed_xfmr", DbToYang_intf_eth_port_speed_xfmr)
     XlateFuncBind("YangToDb_intf_eth_port_aggregate_xfmr", YangToDb_intf_eth_port_aggregate_xfmr)
+    XlateFuncBind("YangToDb_lag_min_links_xfmr", YangToDb_lag_min_links_xfmr)
+    //XlateFuncBind("YangToDb_min_links_key_xfmr", YangToDb_min_links_key_xfmr)
    // XlateFuncBind("DbToYang_intf_eth_port_aggregate_xfmr", DbToYang_intf_eth_port_aggregate_xfmr)
     XlateFuncBind("YangToDb_intf_ip_addr_xfmr", YangToDb_intf_ip_addr_xfmr)
     XlateFuncBind("DbToYang_intf_ip_addr_xfmr", DbToYang_intf_ip_addr_xfmr)
@@ -212,8 +214,6 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
     if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/config"){ //||
       //  strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/ethernet/config") ||
      //   strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/config") 
- 
-        log.Info("....I am here 1")
         tblList = append(tblList, intTbl.cfgDb.portTN)
     } else if  strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/state/counters") {
         tblList = append(tblList, intTbl.CountersHdl.CountersTN)
@@ -238,13 +238,16 @@ var intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, error)
         tblList = append(tblList, intTbl.cfgDb.intfTN)
     } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/ethernet") ||
         strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet") {
-        log.Info("....I am here 2")
+        log.Info("........I am here 2")
+        tblList = append(tblList, intTbl.cfgDb.portTN)
+/*    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-aggregate:aggregation/config/min-links") {
+        log.Info("....min0links----------------")
         tblList = append(tblList, intTbl.cfgDb.portTN)
 /*    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/config/openconfig-if-aggregate:aggregate-id") {
         log.Info("....I am here 4-----")
         tblList = append(tblList, intTbl.cfgDb.memTN)
-*/    } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface") { //To be used for creation/deletion of interface
-        log.Info("....I am here 3---", targetUriPath)
+*/  } else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface") {
+        log.Info("....here 3---", targetUriPath)
         tblList = append(tblList, intTbl.cfgDb.portTN)
     } else {       err = errors.New("Invalid URI")
     }
@@ -290,6 +293,25 @@ var YangToDb_intf_enabled_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (ma
     res_map[PORT_ADMIN_STATUS] = enStr
 
     return res_map, nil
+}
+/*
+var YangToDb_min_links_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
+        var err error
+        return "min_links", err
+}*/
+
+var YangToDb_lag_min_links_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    log.Info("-----minLinks----------------")
+    pathInfo := NewPathInfo(inParams.uri)
+    ifName := pathInfo.Var("name");
+    log.Info("-----minLinks----ifName", ifName)
+    res_map := make(map[string]string)
+    var err error
+
+    minLinks, _ := inParams.param.(*uint16)
+    log.Info("-----minLinks",*minLinks)
+    res_map["min_links"] = strconv.Itoa(int(*minLinks))
+    return res_map, err
 }
 
 func getPortTableNameByDBId (intftbl IntfTblData, curDb db.DBNum) (string, error) {

@@ -2,7 +2,7 @@ module openconfig-interfaces-annot {
 
     yang-version "1";
 
-    namespace "http://openconfig.net/yang/annotation";
+    namespace "http://openconfig.net/yang/interfaces-annot";
     prefix "oc-interfaces-annot";
 
     import sonic-extensions { prefix sonic-ext; }
@@ -39,15 +39,22 @@ module openconfig-interfaces-annot {
         }
     }
     
-    deviation /oc-if:interfaces/oc-if:interface/oc-lag:aggregation {
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-lag:aggregation/oc-lag:config {
       deviate add {
             sonic-ext:db-name "CONFIG_DB";
       }
     }
 
-    deviation /oc-if:interfaces/oc-if:interface/oc-lag:aggregation/oc-lag:state {
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-lag:aggregation/oc-lag:config/oc-lag:min-links {
+        deviate add { 
+        //    sonic-ext:key-transformer "min_links_key_xfmr";
+            sonic-ext:field-transformer "lag_min_links_xfmr";
+        }
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-lag:aggregation/oc-lag:state {
       deviate add {
-            sonic-ext:redis-db-name "APPL_DB";
+            sonic-ext:db-name "APPL_DB";
       }
     }
 
@@ -83,11 +90,6 @@ module openconfig-interfaces-annot {
         deviate add {
             sonic-ext:db-name "CONFIG_DB";
             sonic-ext:subtree-transformer "intf_eth_port_aggregate_xfmr";
-        }
-    }
-    deviation /oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth:config/oc-lag:aggregate-id {
-        deviate add {
-            sonic-ext:table-name "PORTCHANNEL_MEMBER";
         }
     }
     deviation /oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth:config/oc-eth:auto-negotiate {
