@@ -13,28 +13,7 @@ import urllib3
 urllib3.disable_warnings()
 
 plugins = dict()
-temp_resp = {   'ZTP Admin Mode' : 'True',
-                'ZTP Service'    : 'Inactive',
-                'ZTP Status'     : 'SUCCESS',
-                'ZTP Source'     : 'dhcp-opt67 (eth0)',
-                'Runtime'        : '05m 31s',
-                'Timestamp'      : '2019-09-11 19:12:16 UTC',
-                'ZTP JSON Version' : '1.0',
-                'activity-string':'ZTP Service is not running',
-                'config-list' : {'configdb-json':{
-                                                'Status'          : 'SUCCESS',
-                                                'Runtime'         : '02m 48s',
-                                                'Timestamp'       : '2019-09-11 19:11:55 UTC',
-                                                'Exit Code'       : '0',
-                                                'Ignore Result'   : 'False' },
-                                 'connectivity-check':{
-                                                'Status'          : 'SUCCESS',
-                                                'Runtime'         : '04s',
-                                                'Timestamp'       : '2019-09-11 19:12:16 UTC',
-                                                'Exit Code'       : '0',
-                                                'Ignore Result'   : 'False'}
-                                }
-                }
+
 def register(func):
     """Register sdk client method as a plug-in"""
     plugins[func.__name__] = func
@@ -78,8 +57,8 @@ def run(func, args):
         else:
             api_response = aa.api_client.sanitize_for_serialization(api_response)
             if 'ztp-status' in sys.argv:
-               #show_cli_output(sys.argv[2],temp_resp)
-                print(api_response)
+		if 'openconfig-ztp:ztp-status' in api_response:
+                    show_cli_output(sys.argv[2],api_response['openconfig-ztp:ztp-status'])
             else:
                 print('Success')
 
