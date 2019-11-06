@@ -2,7 +2,7 @@ module openconfig-interfaces-annot {
 
     yang-version "1";
 
-    namespace "http://openconfig.net/yang/interfaces-annot";
+    namespace "http://openconfig.net/yang/annotation/openconfig-interfaces-annot";
     prefix "oc-interfaces-annot";
 
     import sonic-extensions { prefix sonic-ext; }
