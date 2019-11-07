@@ -57,12 +57,6 @@ func dataToDBMapAdd(tableName string, dbKey string, result map[string]map[string
         result[tableName][dbKey] = db.Value{Field: make(map[string]string)}
     }
 
-	if field == "NONE" {
-		if len(result[tableName][dbKey].Field) == 0 {
-			result[tableName][dbKey].Field["NULL"] = "NULL"
-		}
-		return
-	}
 
     result[tableName][dbKey].Field[field] = value
     return
