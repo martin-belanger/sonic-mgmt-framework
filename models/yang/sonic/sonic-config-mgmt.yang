@@ -1,0 +1,82 @@
+module sonic-config-mgmt {
+  namespace "http://github.com/Azure/sonic-config-mgmt";
+  prefix scm;
+
+  organization
+    "BRCM";
+  contact
+    "BRCM";
+  description
+    "SONIC ERROR";
+
+  revision 2019-09-15 {
+    description
+      "Initial revision.";
+  }
+
+
+  rpc config_save {
+      input {
+          leaf filename {
+              type string;
+          }
+      }
+      output {
+          leaf status {
+              type string;
+          }
+     }
+  }
+
+  rpc config_reload {
+      input {
+          leaf filename {
+              type string;
+          }
+          leaf load_sysinfo {
+              type boolean;
+          }
+      }
+      output {
+          leaf status {
+              type string;
+          }
+      }
+  }
+  
+  rpc config_load {
+      input {
+          leaf filename {
+              type string;
+          }
+      }
+      output {
+          leaf status {
+              type string;
+          }
+      }
+
+  }
+
+  rpc copy {
+      input {
+          leaf source {
+              type string;
+          }
+
+          leaf overwrite {
+              type boolean;
+          }
+
+          leaf destination {
+              type string;
+          }
+      }
+
+      output {
+          leaf status {
+            type string;
+            }
+      }
+  }
+}
