@@ -122,7 +122,7 @@ func getConfigSection(sectionName string, dataMap map[string]interface{}, status
 	    case ZTP_CONFIG_SECTION_EXITCODE:
     		statusCache.ztpConfigSectionMap[sectionName][ZTP_CONFIG_SECTION_EXITCODE]  = fmt.Sprintf("%d",val)
 	    case ZTP_CONFIG_SECTION_IGNORE_RESULT:
-                statusCache.ztpConfigSectionMap[sectionName][ZTP_CONFIG_SECTION_IGNORE_RESULT] = fmt.Sprintf("%v",val)
+                statusCache.ztpConfigSectionMap[sectionName][ZTP_CONFIG_SECTION_IGNORE_RESULT] = fmt.Sprintf("%t",val)
 	    case ZTP_STATUS_ERROR:
                 statusCache.ztpConfigSectionMap[sectionName][ZTP_STATUS_ERROR] = fmt.Sprintf("%v",val)
 	    default:
@@ -134,45 +134,79 @@ func getConfigSection(sectionName string, dataMap map[string]interface{}, status
 /* Populate ztp status ygot tree */
 
 func populateStatusYgotTree(statusObj *ocbinds.OpenconfigZtp_Ztp_ZtpStatus, statusCache *ztpStatusCache) {
-    act:= statusCache.ztpStatusMap[ZTP_STATUS_ACTIVITY_STRING]
-    statusObj.ActivityString = &act
-     admin := new(bool)
-    *admin,_ =  strconv.ParseBool(statusCache.ztpStatusMap[ZTP_STATUS_ADMIN_MODE])
-    statusObj.AdminMode =  admin
-    jsv := statusCache.ztpStatusMap[ZTP_STATUS_JSON_VERSION]
-    statusObj.Jsonversion =& jsv
-    rt := statusCache.ztpStatusMap[ZTP_STATUS_RUNTIME]
-    statusObj.Runtime =  & rt
-    serv := statusCache.ztpStatusMap[ZTP_STATUS_SERVICE]
-    statusObj.Service = & serv
-    src := statusCache.ztpStatusMap[ZTP_STATUS_SOURCE]
-    statusObj.Source =  & src
-    sts := statusCache.ztpStatusMap[ZTP_STATUS_STATUS]
-    statusObj.Status = & sts
-    tst := statusCache.ztpStatusMap[ZTP_STATUS_TIMESTAMP]
-    statusObj.Timestamp =& tst
-    er := statusCache.ztpStatusMap[ZTP_STATUS_ERROR]
-    statusObj.Error =& er
+
+    if _,present :=statusCache.ztpStatusMap[ZTP_STATUS_ACTIVITY_STRING]; present { 
+        act:= statusCache.ztpStatusMap[ZTP_STATUS_ACTIVITY_STRING]
+        statusObj.ActivityString = &act
+    }
+    if _,present := statusCache.ztpStatusMap[ZTP_STATUS_ADMIN_MODE]; present {
+        admin := new(bool)
+        *admin,_ =  strconv.ParseBool(statusCache.ztpStatusMap[ZTP_STATUS_ADMIN_MODE])
+        statusObj.AdminMode =  admin
+    }
+    if _,present := statusCache.ztpStatusMap[ZTP_STATUS_JSON_VERSION]; present {
+        jsv := statusCache.ztpStatusMap[ZTP_STATUS_JSON_VERSION]
+        statusObj.Jsonversion =& jsv
+    }
+    if _,present := statusCache.ztpStatusMap[ZTP_STATUS_RUNTIME]; present {
+        rt := statusCache.ztpStatusMap[ZTP_STATUS_RUNTIME]
+        statusObj.Runtime =  & rt
+    }
+    if _,present := statusCache.ztpStatusMap[ZTP_STATUS_SERVICE]; present {
+        serv := statusCache.ztpStatusMap[ZTP_STATUS_SERVICE]
+        statusObj.Service = & serv
+    }
+    if _,present := statusCache.ztpStatusMap[ZTP_STATUS_SOURCE]; present {
+        src := statusCache.ztpStatusMap[ZTP_STATUS_SOURCE]
+        statusObj.Source =  & src
+    }
+    if _,present := statusCache.ztpStatusMap[ZTP_STATUS_STATUS]; present {
+        sts := statusCache.ztpStatusMap[ZTP_STATUS_STATUS]
+        statusObj.Status = & sts
+    }
+    if _,present := statusCache.ztpStatusMap[ZTP_STATUS_TIMESTAMP]; present {
+        tst := statusCache.ztpStatusMap[ZTP_STATUS_TIMESTAMP]
+        statusObj.Timestamp =& tst
+    }
+    if _,present :=statusCache.ztpStatusMap[ZTP_STATUS_ERROR]; present {
+        er := statusCache.ztpStatusMap[ZTP_STATUS_ERROR]
+        statusObj.Error =& er
+    }
 }
 
 /* Populate config section ygot tree */
 
 func populateConfigSectionYgotTree(sectionName string, configObj *ocbinds.OpenconfigZtp_Ztp_ZtpStatus_CONFIG_SECTION_LIST, statusCache *ztpStatusCache) {
-    ignr := true
-    configObj.Ignoreresult =  &ignr
-    rt := statusCache.ztpConfigSectionMap[sectionName][ZTP_CONFIG_SECTION_RUNTIME]
-    configObj.Runtime = &rt
-    var  extc uint64
-    extc,_ = strconv.ParseUint(statusCache.ztpConfigSectionMap[sectionName][ZTP_CONFIG_SECTION_EXITCODE],10,64)
-    configObj.Exitcode = &extc
-    sec := statusCache.ztpConfigSectionMap[sectionName][ZTP_CONFIG_SECTION_NAME]
-    configObj.Sectionname = &sec
-    st := statusCache.ztpConfigSectionMap[sectionName][ZTP_CONFIG_SECTION_STATUS]
-    configObj.Status = &st
-    ts := statusCache.ztpConfigSectionMap[sectionName][ZTP_CONFIG_SECTION_TIMESTAMP]
-    configObj.Timestamp = &ts
-    er := statusCache.ztpConfigSectionMap[sectionName][ZTP_STATUS_ERROR]
-    configObj.Error = &er
+    if _,present := statusCache.ztpConfigSectionMap[sectionName][ZTP_CONFIG_SECTION_IGNORE_RESULT]; present {
+        ignr := new(bool)
+        *ignr,_ = strconv.ParseBool(statusCache.ztpConfigSectionMap[sectionName][ZTP_CONFIG_SECTION_IGNORE_RESULT])
+        configObj.Ignoreresult = ignr
+    }
+    if _,present := statusCache.ztpConfigSectionMap[sectionName][ZTP_CONFIG_SECTION_RUNTIME]; present {
+        rt := statusCache.ztpConfigSectionMap[sectionName][ZTP_CONFIG_SECTION_RUNTIME]
+        configObj.Runtime = &rt
+    }
+    if _,present := statusCache.ztpConfigSectionMap[sectionName][ZTP_CONFIG_SECTION_EXITCODE]; present {
+        var  extc uint64
+        extc,_ = strconv.ParseUint(statusCache.ztpConfigSectionMap[sectionName][ZTP_CONFIG_SECTION_EXITCODE],10,64)
+        configObj.Exitcode = &extc
+    }
+    if _,present := statusCache.ztpConfigSectionMap[sectionName][ZTP_CONFIG_SECTION_NAME]; present {
+        sec := statusCache.ztpConfigSectionMap[sectionName][ZTP_CONFIG_SECTION_NAME]
+        configObj.Sectionname = &sec
+    }
+    if _,present := statusCache.ztpConfigSectionMap[sectionName][ZTP_CONFIG_SECTION_STATUS]; present {
+        st := statusCache.ztpConfigSectionMap[sectionName][ZTP_CONFIG_SECTION_STATUS]
+        configObj.Status = &st
+    }
+    if _,present := statusCache.ztpConfigSectionMap[sectionName][ZTP_CONFIG_SECTION_TIMESTAMP]; present {
+        ts := statusCache.ztpConfigSectionMap[sectionName][ZTP_CONFIG_SECTION_TIMESTAMP]
+        configObj.Timestamp = &ts
+    }
+    if _,present := statusCache.ztpConfigSectionMap[sectionName][ZTP_STATUS_ERROR]; present {
+        er := statusCache.ztpConfigSectionMap[sectionName][ZTP_STATUS_ERROR]
+        configObj.Error = &er
+    }
 }
 
 /* Get status info from db */
