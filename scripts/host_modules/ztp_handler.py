@@ -30,6 +30,7 @@ from ztp.ZTPLib import getCfg, setCfg, getFeatures, getTimestamp
 from ztp.ZTPCfg import ZTPCfg
 import host_service
 import json
+import syslog 
 
 """ZTP command handler"""
 
@@ -66,9 +67,10 @@ class ZTP(host_service.HostModule):
 
     @host_service.method(host_service.bus_name(MOD_NAME), in_signature='', out_signature='is')
     def status(self):
-        temp = json.dumps(ztp_status())
-        return 0,temp
-        #return self._run_command(["status", "-v"])
+        print("Calling ZTP Status")       
+        b = ztp_status()
+        print("Returning", b)
+        return 0,b
         
 def register():
     """Return the class name"""
@@ -193,7 +195,9 @@ def ztp_status():
     # Print overall ZTP status
     statusdict = {}
     configdict = {}
+    ztp_cfg=ZTPCfg()
     statusdict['admin_mode'] = getCfg('admin-mode', ztp_cfg=ztp_cfg)
+
     if os.path.isfile(getCfg('ztp-json', ztp_cfg=ztp_cfg)):
         objJson, jsonDict = JsonReader(getCfg('ztp-json', ztp_cfg=ztp_cfg), indent=4)
         ztpDict = jsonDict.get('ztp')
@@ -254,12 +258,6 @@ def ztp_status():
         statusdict['activty_string'] = getActivityString()
 
     statusdict['config_section_list'] = configdict
-    return statusdict
-
-if __name__ == "__main__":
-    a = ztp_status()
-    b = json.dumps(a)
-    print('************************ printing as such****************')
-    print(b)
-
+    retVal = json.dumps(statusdict)
+    return retVal
 
