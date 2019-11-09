@@ -22,7 +22,7 @@ ABS_TOPDIR ?= $(abspath $(TOPDIR))
 BUILD_DIR  ?= $(TOPDIR)/build
 
 GO     ?= go
-GOPATH ?= $(ABS_TOPDIR)/gopkgs:$(ABS_TOPDIR):$(shell $(GO) env GOPATH)
+GOPATH ?= $(BUILD_GOPATH):$(ABS_TOPDIR):$(shell $(GO) env GOPATH)
 GOROOT ?= $(shell $(GO) env GOROOT)
 
 
@@ -36,7 +36,7 @@ REST_TEST_SRCS = $(shell find . -name '*_test.go')
 # Source files affecting REST server
 REST_SRCS := $(ALL_GO_SRCS) \
 			 $(shell find $(TOPDIR)/models/yang -name '*.yang' | sort) \
-			 $(shell find $(TOPDIR)/src/cvl/schema '*.yang' | sort) \
+			 $(shell find $(TOPDIR)/src/cvl/schema -name '*.yang' | sort) \
 			 $(shell find $(TOPDIR)/models/openapi -name '*.yaml' | sort)
 
 REST_GOPATH := $(GOPATH):$(abspath $(REST_BUILD_DIR)/dist)
