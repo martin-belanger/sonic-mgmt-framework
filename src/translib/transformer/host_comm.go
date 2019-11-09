@@ -1,4 +1,4 @@
-package translib
+package transformer
 
 import (
 	// Go 1.11 doesn't let us download using the canonical import path

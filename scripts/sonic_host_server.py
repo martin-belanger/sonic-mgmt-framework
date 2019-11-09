@@ -12,7 +12,6 @@ import dbus.service
 import dbus.mainloop.glib
 
 from gi.repository import GObject
-#import gobject
 
 BUS_NAME = 'org.SONiC.HostService'
 BUS_PATH = '/org/SONiC/HostService'
@@ -38,11 +37,9 @@ def register_dbus(mod_name, handler_class):
     handlers[mod_name] = handler_class(mod_name)
 
 # Create a main loop reactor
-#gobject.threads_init()
 GObject.threads_init()
 dbus.mainloop.glib.threads_init()
 dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-#loop = gobject.MainLoop()
 loop = GObject.MainLoop()
 handlers = {}
 
