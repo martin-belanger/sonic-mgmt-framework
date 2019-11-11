@@ -16,7 +16,7 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-package translib
+package transformer
 
 import (
      "errors"
@@ -25,15 +25,14 @@ import (
 	"encoding/json"
 	"translib/db"
 	log "github.com/golang/glog"
-    "translib/transformer"
 )
 
 func init() {
-	transformer.XlateFuncBind("rpc_config_copy", rpc_config_copy)
+	XlateFuncBind("rpc_config_copy", rpc_config_copy)
 }
 
 
-var rpc_config_copy transformer.RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+var rpc_config_copy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
     return cfg_copy_action(body)
 }
 
