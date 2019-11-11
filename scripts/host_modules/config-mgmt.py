@@ -27,9 +27,7 @@ class CFG_MGMT(host_service.HostModule):
 
         except subprocess.CalledProcessError as err:
             print("Exception when calling get_sonic_error -> %s\n" %(err))
-            print ('err',err.returncode)
             rc = err.returncode
-            print('Output -> ',output)
             output = ""
             
         return rc,output

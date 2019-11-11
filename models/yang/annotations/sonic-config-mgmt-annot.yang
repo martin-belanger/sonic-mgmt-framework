@@ -8,20 +8,10 @@ module sonic-config-mgmt-annot {
     import sonic-extensions { prefix sonic-ext; }
     import sonic-config-mgmt { prefix cmgmt; }
 
-    deviation /cmgmt:config_save  {
-      deviate add {
-		sonic-ext:rpc-callback "rpc_config_save";
-      }
-    }
-    deviation /cmgmt:config_reload  {
-      deviate add {
-		sonic-ext:rpc-callback "rpc_config_reload";
-      }
-    }
-    deviation /cmgmt:config_load  {
-      deviate add {
-		sonic-ext:rpc-callback "rpc_config_load";
-      }
+    deviation /cmgmt:copy {
+        deviate add {
+            sonic-ext:rpc-callback "rpc_config_copy";
+        }
     }
 }
 

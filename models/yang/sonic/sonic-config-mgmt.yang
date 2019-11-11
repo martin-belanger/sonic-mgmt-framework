@@ -15,49 +15,6 @@ module sonic-config-mgmt {
   }
 
 
-  rpc config_save {
-      input {
-          leaf filename {
-              type string;
-          }
-      }
-      output {
-          leaf status {
-              type string;
-          }
-     }
-  }
-
-  rpc config_reload {
-      input {
-          leaf filename {
-              type string;
-          }
-          leaf load_sysinfo {
-              type boolean;
-          }
-      }
-      output {
-          leaf status {
-              type string;
-          }
-      }
-  }
-  
-  rpc config_load {
-      input {
-          leaf filename {
-              type string;
-          }
-      }
-      output {
-          leaf status {
-              type string;
-          }
-      }
-
-  }
-
   rpc copy {
       input {
           leaf source {

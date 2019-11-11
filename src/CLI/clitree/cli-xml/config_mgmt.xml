@@ -16,53 +16,53 @@
     <VIEW name="enable-view">
         <COMMAND
             name="write"
-            help="Write current ConfigDB to file on disk"
+            help="Save config"
             >
             <PARAM
                 name="memory"
-                help="Write configDB to memory"
+                help="Save config"
                 ptype="SUBCOMMAND"
                 mode="subcommand"
                 >
             </PARAM>
         <ACTION>
-            python $SONIC_CLI_ROOT/sonic-cli-cfg-mgmt.py rpc_sonic_config_mgmt_config_save 
+            python $SONIC_CLI_ROOT/sonic-cli-cfg-mgmt.py rpc_sonic_config_mgmt_copy running-configuration startup-configuration
         </ACTION>
         </COMMAND>
         <COMMAND
             name="copy"
-            help="Perform file copy operation"
+            help="Perform file copy operations"
             ptype="SUBCOMMAND">
                 <PARAM name="src-copy-options"
                        help="Copy source options"
                        ptype="SUBCOMMAND"
                        mode="switch">
+                       <PARAM name="copy_config_url"
+                              help="Copy directory(file://filepath)"
+                              ptype="FILE_TYPE">
+                              <PARAM name="running-configuration"
+                                     help="Copy to running-configuration"
+                                     mode="subcommand"
+                                     ptype="SUBCOMMAND">
+                                     <PARAM name="overwrite"
+                                            help="Overwrite running-configuration and restart core services."
+                                            optional="true"
+                                            mode="subcommand"
+                                            ptype="SUBCOMMAND">
+                                     </PARAM>
+                              </PARAM>
+                       </PARAM>
                        <PARAM name="running-configuration"
-                              help="Copy from running configuration"
+                              help="Copy running configuration"
                               mode="subcommand"
                               ptype="SUBCOMMAND">
                               <PARAM name="filepath"
                                      help="Copy to directory(file://filepath)"
-                                     ptype="CONFIG_TYPE">
-                              </PARAM>
-                       </PARAM>
-                       <PARAM name="copy_config_url"
-                              help="Copy from directory(file://filepath)"
-                              ptype="CONFIG_TYPE">
-                              <PARAM name="running-configuration"
-                                     help="Copy to running-configuration"
-                                     mode="subcommand"
-                                     ptype="SUBCOMMAND">
-                                     <PARAM name="overwrite"
-                                            help="Overwrite running-configuration and restart core services."
-                                            optional="true" 
-                                            mode="subcommand"
-                                            ptype="SUBCOMMAND">
-                                     </PARAM>
+                                     ptype="FILE_TYPE">
                               </PARAM>
                        </PARAM>
                        <PARAM name="startup-configuration"
-                              help="Copy from startup-configuration"
+                              help="Copy startup-configuration"
                               mode="subcommand"
                               ptype="SUBCOMMAND">
                               <PARAM name="running-configuration"
@@ -71,23 +71,23 @@
                                      ptype="SUBCOMMAND">
                                      <PARAM name="overwrite"
                                             help="Overwrite running-configuration and restart core services."
-                                            optional = "true" 
+                                            optional = "true"
                                             mode="subcommand"
                                             ptype="SUBCOMMAND">
                                      </PARAM>
                               </PARAM>
                        </PARAM>
-                </PARAM>             
+                </PARAM>
                 <ACTION>
-                  if test "${src-copy-options}"  = "running-configuration";then
-                      python $SONIC_CLI_ROOT/sonic-cli-cfg-mgmt.py rpc_sonic_config_mgmt_config_save ${filename}	
-                  else
-		     if test "${reload}" = "";then
-                          python $SONIC_CLI_ROOT/sonic-cli-cfg-mgmt.py rpc_sonic_config_mgmt_config_load ${copy_config_url} 	
-                      else 
-                          python $SONIC_CLI_ROOT/sonic-cli-cfg-mgmt.py rpc_sonic_config_mgmt_config_reload ${filename} ${reload} ${load-sysinfo}	
-                      fi 
-                  fi   
+                  if test "${src-copy-options}" = "copy_config_url"; then&#xA;
+                      python $SONIC_CLI_ROOT/sonic-cli-cfg-mgmt.py rpc_sonic_config_mgmt_copy ${copy_config_url} ${running-configuration} ${overwrite}&#xA;
+                  else&#xA;
+		              if test "${filepath}" = ""; then&#xA;
+                          python $SONIC_CLI_ROOT/sonic-cli-cfg-mgmt.py rpc_sonic_config_mgmt_copy ${src-copy-options} ${running-configuration} ${overwrite}&#xA;
+                      else&#xA;
+                          python $SONIC_CLI_ROOT/sonic-cli-cfg-mgmt.py rpc_sonic_config_mgmt_copy ${src-copy-options} ${filepath}&#xA;
+                      fi&#xA;
+                  fi&#xA;
                 </ACTION>
           </COMMAND>                           
     </VIEW>
