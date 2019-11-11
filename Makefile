@@ -66,7 +66,7 @@ all: build-deps $(go-deps) $(go-redis-patch) $(go-patch) translib rest-server cl
 build-deps:
 	mkdir -p $(BUILD_DIR)/gopkgs
 
-$(BUILD_DIR)/gopkgs/.done:
+$(BUILD_DIR)/gopkgs/.done: $(MAKEFILE_LIST)
 	$(GO) get -v $(GO_DEPS_LIST)
 	touch  $@
 
@@ -152,9 +152,9 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 clean: rest-clean
 	$(MAKE) -C src/translib clean
 	$(MAKE) -C src/cvl clean
-	rm -rf build/*
 	rm -rf debian/.debhelper
 	rm -rf $(BUILD_GOPATH)/src/github.com/openconfig/goyang/annotate.go
+	cd build && find .  -maxdepth 1 -name "gopkgs" -prune -o -not -name '.' -exec rm -rf {} +
 
 cleanall:
 	$(MAKE) -C src/cvl cleanall

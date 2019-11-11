@@ -19,7 +19,8 @@
 
 TOPDIR     ?= ../..
 ABS_TOPDIR ?= $(abspath $(TOPDIR))
-BUILD_DIR  ?= $(TOPDIR)/build
+BUILD_DIR  ?= $(ABS_TOPDIR)/build
+BUILD_GOPATH ?= $(BUILD_DIR)/gopkgs
 
 GO     ?= go
 GOPATH ?= $(BUILD_GOPATH):$(ABS_TOPDIR):$(shell $(GO) env GOPATH)
@@ -61,7 +62,7 @@ $(REST_BIN): $(REST_SRCS) | $(REST_BUILD_DIR)/
 ifeq ($(SONIC_COVERAGE_ON),y)
 	GOPATH=$(REST_GOPATH) $(GO) test -coverpkg=".././..." -c -o $@ main/main.go main/main_test.go
 else
-	GOPATH=$(REST_GOPATH) $(GO) build -gcflags="all=-N -l" -v -o $@ main/main.go
+	GOPATH=$(REST_GOPATH) $(GO) build -gcflags="all=-N -l" -v -o $@ $(abspath .)/main/main.go
 endif
 
 # Gotest binary for REST Server
