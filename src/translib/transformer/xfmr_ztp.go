@@ -317,27 +317,20 @@ var DbToYang_ztp_config_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (e
 
 }
 var YangToDb_ztp_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value,error) {
-
+    var err error
     log.Info("TableXfmrFunc - Uri ZTP: ", inParams.uri);
     pathInfo := NewPathInfo(inParams.uri)
-
     targetUriPath, err := getYangPathFromUri(pathInfo.Path)
     log.Info("TARGET URI PATH ZTP:", targetUriPath)
-    admin_mode := pathInfo.Var("admin_mode")
-    log.Info("Admin mode type from client:",reflect.TypeOf(admin_mode))
-    log.Info("Admin_mode value from Client:",admin_mode)
-    for id, val := range pathInfo.Vars {
-	log.Info("pathinfo-id:",id,"pathinfo-val:",val)
+    var act string = "disable"
+    ztpObj := getZtpRoot(inParams.ygRoot)
+    if ztpObj.Config.AdminMode == nil {
+	log.Info("Invalid Input")
+	return nil,err
     }
-    log.Info("pathinfo.vars:",pathInfo.Vars)
-    log.Info("pathinfo:",pathInfo)
-    b, err := strconv.ParseBool(admin_mode)
-    var act string
-    if b == true {
+    b := * ztpObj.Config.AdminMode
+    if (b){
         act = "enable"
-    }
-    if b == false {
-	act = "disable"
     }
     _, err = ztpAction(act)
     return nil,err;

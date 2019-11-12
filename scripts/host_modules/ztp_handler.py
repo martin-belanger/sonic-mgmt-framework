@@ -61,10 +61,15 @@ class ZTP(host_service.HostModule):
     def enable(self):
         self._run_command("enable")
 
-    @host_service.method(host_service.bus_name(MOD_NAME), in_signature='', out_signature='')
+    @host_service.method(host_service.bus_name(MOD_NAME), in_signature='', out_signature='is')
     def getcfg(self):
-        admin_mode = getCfg('admin-mode', ztp_cfg=ztp_cfg)
-        print('admin_mode=',admin_mode)
+        ztp_cfg=ZTPCfg()
+        ad = getCfg('admin-mode', ztp_cfg=ztp_cfg)
+        if ad == False:
+            return 0,"disabled"
+        else:
+            return 0,"enabled"
+
 
     @host_service.method(host_service.bus_name(MOD_NAME), in_signature='', out_signature='')
     def disable(self):
