@@ -18,9 +18,9 @@ module openconfig-ztp {
             "Initial revision.";
     }
   container ztp {
-
-	container  ztp-status{
-
+        
+	container state{
+	    config false;
 	    leaf admin_mode {
 		type boolean;
 	     }
@@ -74,17 +74,12 @@ module openconfig-ztp {
 		}
 	    }
 	}
-	container ztp-enable {
+	container config {
 	    leaf admin_mode {
 		type boolean;
 	    }
 	}
-        container ztp-disable {
-	    leaf admin_mode {
-		type boolean;
-	    }
-	}
- }
+   }
   
 }
 

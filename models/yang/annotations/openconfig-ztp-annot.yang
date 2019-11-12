@@ -8,20 +8,14 @@ module openconfig-ztp-annot {
     import openconfig-ztp { prefix oc-ztp; }
     import openconfig-extensions { prefix oc-ext; }
 
-    deviation /oc-ztp:ztp/oc-ztp:ztp-status {
+    deviation /oc-ztp:ztp/oc-ztp:state {
         deviate add {
             sonic-ext:subtree-transformer "ztp_status_xfmr";
             }
     }
-    deviation /oc-ztp:ztp/oc-ztp:ztp-enable {
+    deviation /oc-ztp:ztp/oc-ztp:config {
         deviate add {
-            sonic-ext:subtree-transformer "ztp_enable_xfmr";
+            sonic-ext:subtree-transformer "ztp_config_xfmr";
             }
     }
-    deviation /oc-ztp:ztp/oc-ztp:ztp-disable {
-        deviate add {
-            sonic-ext:subtree-transformer "ztp_disable_xfmr";
-            }
-    }
-
 }
