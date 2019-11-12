@@ -42,19 +42,19 @@ type Config struct {
     overwrite bool
 }
 
-var m map[Config]string
+var cfg_op_map map[Config]string
 
 
 func init() {
 
-    m = make(map[Config]string)
+    cfg_op_map = make(map[Config]string)
 
-    m[Config{"running-configuration", "startup-configuration", false}] = "cfg_mgmt.save"
-    m[Config{"running-configuration", "filename", false}]= "cfg_mgmt.save"
-    m[Config{"filename", "running-configuration", false}] ="cfg_mgmt.load"
-    m[Config{"startup-configuration", "running-configuration", false}] ="cfg_mgmt.load"
-    m[Config{"filename", "running-configuration", true}] ="cfg_mgmt.reload"
-    m[Config{"startup-configuration", "running-configuration", true}] ="cfg_mgmt.reload"
+    cfg_op_map[Config{"running-configuration", "startup-configuration", false}] = "cfg_mgmt.save"
+    cfg_op_map[Config{"running-configuration", "filename", false}]= "cfg_mgmt.save"
+    cfg_op_map[Config{"filename", "running-configuration", false}] ="cfg_mgmt.load"
+    cfg_op_map[Config{"startup-configuration", "running-configuration", false}] ="cfg_mgmt.load"
+    cfg_op_map[Config{"filename", "running-configuration", true}] ="cfg_mgmt.reload"
+    cfg_op_map[Config{"startup-configuration", "running-configuration", true}] ="cfg_mgmt.reload"
 }
 
 
@@ -86,7 +86,8 @@ func cfg_copy_action(body []byte) ([]byte, error) {
 
     var sum struct {
 		Output struct {
-			Result string `json:"status"`
+			Status int32 `json:"status"`
+            Status_detail string`json:"status-detail"`
 		} `json:"sonic-config-mgmt:output"`
 	}
 
@@ -94,7 +95,7 @@ func cfg_copy_action(body []byte) ([]byte, error) {
 	if err != nil {
         /* Unmarshall failed, no input provided.
          * set to default */
-       log.Fatal("Config input not provided.")
+       log.Error("Config input not provided.")
        err = errors.New("Input parameters missing.")
 	} else {
        source = operand.Input.Source
@@ -114,7 +115,7 @@ func cfg_copy_action(body []byte) ([]byte, error) {
 
        if (err == nil ) {
             config := Config{source, destination, operand.Input.Overwrite}
-            cfg_cmd, ok := m[config]
+            cfg_cmd, ok := cfg_op_map[config]
             if ok == true {
                if (source == "filename")  ||
                    (destination == "filename") {
@@ -123,21 +124,24 @@ func cfg_copy_action(body []byte) ([]byte, error) {
                }
                query_result = hostQuery(cfg_cmd, options)
             } else {
+               log.Error("Invalid command src %s, dest %s, overwrite %t\n",
+                source, destination, operand.Input.Overwrite) 
                err = errors.New("Invalid command.")
             }
        }
     }
-
+    sum.Output.Status = 1
     if err != nil {
-        sum.Output.Result  =  err.Error()
+        sum.Output.Status_detail  =  err.Error()
     } else if query_result.Err != nil {
-        sum.Output.Result = "ERROR:Internal SONiC Hostservice communication failure."
+        sum.Output.Status_detail = "ERROR:Internal SONiC Hostservice communication failure."
     } else if query_result.Body[0].(int32) ==2 {
-            sum.Output.Result = fmt.Sprintf("ERROR:Invalid filename %s.", filename)
+            sum.Output.Status_detail = fmt.Sprintf("ERROR:Invalid filename %s.", filename)
     } else if query_result.Body[0].(int32) != 0 {
-            sum.Output.Result = "ERROR:Command Failed."
+            sum.Output.Status_detail = "ERROR:Command Failed."
     } else {
-            sum.Output.Result = "SUCCESS."
+            sum.Output.Status = 0
+            sum.Output.Status_detail = "SUCCESS."
     }
     result, err = json.Marshal(&sum)
 
