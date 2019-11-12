@@ -3,92 +3,51 @@ import sys
 import time
 import json
 import ast
-import openconfig_ztp_client
 from rpipe_utils import pipestr
-from openconfig_ztp_client.rest import ApiException
 from scripts.render_cli import show_cli_output
-
-
+import cli_client as cc
+import re
 import urllib3
 urllib3.disable_warnings()
 
-plugins = dict()
+def invoke(func, args):
+    body = {}
+    aa = cc.ApiClient()
 
-def register(func):
-    """Register sdk client method as a plug-in"""
-    plugins[func.__name__] = func
-    return func
+    if func == 'get_openconfig_ztp_ztp_state':
+        path = cc.Path('/restconf/data/openconfig-ztp:ztp/state')
+	return aa.get(path)
+    else:
+        print('in else')
+	path = cc.Path('/restconf/data/openconfig-ztp:ztp/config')
+	print("path done:",sys.argv)
+	if 'enable' in sys.argv:
+	    body["openconfig-ztp:admin_mode"] =  True 
+        else:
+	    body["openconfig-ztp:admin_mode"] = False
+        return aa.post(path,body)
 
-
-def call_method(name, args):
-    method = plugins[name]
-    return method(args)
-
-def generate_body(func, args):
-    body = None
-    # Get the rules of all ACL table entries.
-
-    #if func.__name__ == 'get_openconfig_ztp_ztp_ztp_status':
-    #    keypath = []
-
-    #else:
-    #   body = {}
-
-    return [],body
 
 
 def run(func, args):
-    c = openconfig_ztp_client.Configuration()
-    c.verify_ssl = False
-    aa = openconfig_ztp_client.OpenconfigZtpApi(api_client=openconfig_ztp_client.ApiClient(configuration=c))
-
-    # create a body block
-    keypath, body = generate_body(func, args)
-
     try:
-        if body is not None:
-           api_response = getattr(aa,func.__name__)(*keypath, body=body)
-
-        else :
-           api_response = getattr(aa,func.__name__)(*keypath)
-
-        if api_response is None:
-            print ("Success")
+	api_response = invoke(func, args)
+        if api_response.ok():
+	    response = api_response.content
+	    if response is None:
+                print ("Success")
+            elif 'openconfig-ztp:state' in response.keys():
+                value = response['openconfig-ztp:state']
+		if value is not None:
+                    show_cli_output(sys.argv[2],value)
         else:
-            api_response = aa.api_client.sanitize_for_serialization(api_response)
-            if 'ztp-status' in sys.argv:
-		if 'openconfig-ztp:ztp-status' in api_response:
-                    show_cli_output(sys.argv[2],api_response['openconfig-ztp:ztp-status'])
-            else:
-                print('Success')
-
-    except ApiException as e:
-        if e.body != "":
-            body = json.loads(e.body)
-            if "ietf-restconf:errors" in body:
-                 err = body["ietf-restconf:errors"]
-                 if "error" in err:
-                     errList = err["error"]
-
-                     errDict = {}
-                     for dict in errList:
-                         for k, v in dict.iteritems():
-                              errDict[k] = v
-
-                     if "error-message" in errDict:
-                         print "%Error: " + errDict["error-message"]
-                         return
-                     print "%Error: Transaction Failure"
-                     return
-            print "%Error: Transaction Failure"
-        else:
-            print "Failed"
+            print('Success')
+    except:
+	print("%Error: Transaction Failure")
 
 if __name__ == '__main__':
 
     pipestr().write(sys.argv)
-    #pdb.set_trace()
-    func = eval(sys.argv[1], globals(), openconfig_ztp_client.OpenconfigZtpApi.__dict__)
-    run(func, sys.argv[2:])
+    run(sys.argv[1], sys.argv[2:])
 
 
