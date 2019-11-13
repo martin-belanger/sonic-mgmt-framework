@@ -167,8 +167,10 @@ func yangToDbMapFill (keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entr
 		keyXpath        := make([]string, len(strings.Split(entry.Key, " ")))
 		for id, keyName := range(strings.Split(entry.Key, " ")) {
 			keyXpath[id] = xpath + "/" + keyName
-			keyXpathData := new(yangXpathInfo)
-			xYangSpecMap[xpath + "/" + keyName] = keyXpathData
+			if _, ok := xYangSpecMap[xpath + "/" + keyName]; !ok {
+				keyXpathData := new(yangXpathInfo)
+				xYangSpecMap[xpath + "/" + keyName] = keyXpathData
+			}
 			xYangSpecMap[xpath + "/" + keyName].isKey = true
 		}
 
@@ -428,6 +430,8 @@ func annotEntryFill(xYangSpecMap map[string]*yangXpathInfo, xpath string, entry 
 					xpathData.dbIndex  = db.FlexCounterDB
 				} else if ext.NName() == "STATE_DB" {
 					xpathData.dbIndex  = db.StateDB
+				} else if ext.NName() == "ERROR_DB" {
+					xpathData.dbIndex  = db.ErrorDB
 				} else {
 					xpathData.dbIndex  = db.ConfigDB
 				}
@@ -544,6 +548,8 @@ func annotDbSpecMapFill(xDbSpecMap map[string]*dbInfo, dbXpath string, entry *ya
 					dbXpathData.dbIndex  = db.FlexCounterDB
 				} else if ext.NName() == "STATE_DB" {
 					dbXpathData.dbIndex  = db.StateDB
+				} else if ext.NName() == "ERROR_DB" {
+					dbXpathData.dbIndex  = db.ErrorDB
 				} else {
 					dbXpathData.dbIndex  = db.ConfigDB
 				}
