@@ -12,13 +12,18 @@
       <ACTION> python $SONIC_CLI_ROOT/sonic-cli-ztp.py get_openconfig_ztp_ztp_state show_ztp.j2 ${__full_line} </ACTION>
       <xi:include href="include/pipe.xml"/>
     </COMMAND>
-    <COMMAND name="ztp" help="Ztp related commands">
+  </VIEW>
+  <VIEW name="configure-view">
+    <COMMAND name="no ztp" help="Ztp control commands">
       <ACTION builtin="clish_nop"/>
     </COMMAND>
-    <COMMAND name="ztp disable" help="Ztp disable command">
+    <COMMAND name="no ztp enable" help="Ztp disable commands">
       <ACTION> python $SONIC_CLI_ROOT/sonic-cli-ztp.py post_openconfig_ztp_ztp_config_admin_mode ${__full_line} </ACTION>
     </COMMAND>
-    <COMMAND name="ztp enable" help="Ztp enable commands">
+    <COMMAND name="ztp" help="Ztp control commands">
+      <ACTION builtin="clish_nop"/>
+    </COMMAND>
+    <COMMAND name="ztp enable" help="Ztp enable command" >
       <ACTION> python $SONIC_CLI_ROOT/sonic-cli-ztp.py post_openconfig_ztp_ztp_config_admin_mode ${__full_line} </ACTION>
     </COMMAND>
   </VIEW>

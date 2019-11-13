@@ -18,13 +18,11 @@ def invoke(func, args):
         path = cc.Path('/restconf/data/openconfig-ztp:ztp/state')
 	return aa.get(path)
     else:
-        print('in else')
 	path = cc.Path('/restconf/data/openconfig-ztp:ztp/config')
-	print("path done:",sys.argv)
-	if 'enable' in sys.argv:
-	    body["openconfig-ztp:admin_mode"] =  True 
+	if 'no' in sys.argv:
+	    body["openconfig-ztp:admin_mode"] = False 
         else:
-	    body["openconfig-ztp:admin_mode"] = False
+	    body["openconfig-ztp:admin_mode"] = True
         return aa.post(path,body)
 
 

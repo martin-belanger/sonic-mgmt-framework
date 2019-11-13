@@ -17,8 +17,6 @@ limitations under the License.
 '''
 
 import sys
-import argparse
-from argparse import RawTextHelpFormatter
 import os
 import subprocess
 import errno
@@ -61,26 +59,26 @@ class ZTP(host_service.HostModule):
     def enable(self):
         self._run_command("enable")
 
-    @host_service.method(host_service.bus_name(MOD_NAME), in_signature='', out_signature='is')
+    @host_service.method(host_service.bus_name(MOD_NAME), in_signature='', out_signature='s')
     def getcfg(self):
         ztp_cfg=ZTPCfg()
         ad = getCfg('admin-mode', ztp_cfg=ztp_cfg)
         if ad == False:
-            return 0,"disabled"
+            return "disabled"
         else:
-            return 0,"enabled"
+            return "enabled"
 
 
     @host_service.method(host_service.bus_name(MOD_NAME), in_signature='', out_signature='')
     def disable(self):
         self._run_command(["disable", "-y"])
 
-    @host_service.method(host_service.bus_name(MOD_NAME), in_signature='', out_signature='is')
+    @host_service.method(host_service.bus_name(MOD_NAME), in_signature='', out_signature='s')
     def status(self):
         print("Calling ZTP Status")       
         b = ztp_status()
         print("Returning", b)
-        return 0,b
+        return b
         
 def register():
     """Return the class name"""
@@ -89,11 +87,6 @@ def register():
 
 
 ztp_cfg = None
-## Signal handler is called on SIGTERM or SIGINT
-def signal_handler(signum, frame):
-    print('\nAborted!')
-    sys.exit(0)
-
 ## Helper API to modify status variable to a user friendly string.
 def getStatusString(val):
     if val == 'BOOT':
@@ -238,8 +231,6 @@ def ztp_status():
             if isinstance(v, dict):
                 configdict[k] = {}
                 configdict[k]['cfg_sectionname'] = k
-                if v.get('description') is not None:
-                    print('Description     : %s' % v.get('description'))
                 configdict[k]['cfg_status'] = getStatusString(v.get('status'))
                 runtime = getRuntime(v.get('status'), v.get('start-timestamp'), v.get('timestamp'))
                 if runtime is not None:
