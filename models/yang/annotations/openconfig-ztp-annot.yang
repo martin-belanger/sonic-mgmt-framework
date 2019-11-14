@@ -1,7 +1,7 @@
 module openconfig-ztp-annot {
    
     yang-version "1";
-    namespace "http://openconfig.net/yang/annotation";
+    namespace "http://openconfig.net/yang/ztp-annot";
     prefix "oc-ztp-annot";
 
     import sonic-extensions { prefix sonic-ext; }
