@@ -28,7 +28,7 @@ class CFG_MGMT(host_service.HostModule):
         except subprocess.CalledProcessError as err:
             print("Exception when calling get_sonic_error -> %s\n" %(err))
             rc = err.returncode
-            output = ""
+            output = err.output
             
         return rc,output
 
@@ -46,4 +46,4 @@ class CFG_MGMT(host_service.HostModule):
         
 def register():
     """Return class name"""
-    return CFG_MGMT    
+    return CFG_MGMT, MOD_NAME

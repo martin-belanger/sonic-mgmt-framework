@@ -38,7 +38,7 @@
                        ptype="SUBCOMMAND"
                        mode="switch">
                        <PARAM name="copy_config_url"
-                              help="Copy directory(file://filepath)"
+                              help="Copy from file(file://filepath)"
                               ptype="FILE_TYPE">
                               <PARAM name="running-configuration"
                                      help="Copy to running-configuration"
@@ -57,7 +57,7 @@
                               mode="subcommand"
                               ptype="SUBCOMMAND">
                               <PARAM name="filepath"
-                                     help="Copy to directory(file://filepath)"
+                                     help="Copy to file(file://filepath)"
                                      ptype="FILE_TYPE">
                               </PARAM>
                        </PARAM>
