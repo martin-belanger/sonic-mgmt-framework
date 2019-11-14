@@ -58,6 +58,12 @@ def invoke(func, args):
     if func == 'get_openconfig_network_instance_network_instances_network_instance_fdb_mac_table_entries':
         keypath = cc.Path('/restconf/data/openconfig-network-instance:network-instances/network-instance={name}/fdb/mac-table/entries', name='default')
         return aa.get(keypath)
+    elif func == 'rpc_sonic_fdb_clear_fdb':
+        keypath = cc.Path('/restconf/operations/sonic-fdb:clear_fdb')
+        body = {"sonic-fdb:input":{"mac-param":"all"}}
+        return aa.post(keypath, body)
+    else:
+        return body
 
 def run(func, args):
     try:
@@ -65,14 +71,14 @@ def run(func, args):
 
         if api_response.ok():
             response = api_response.content
-            if response is None:
-                return
-            else:
+            if response is not None:
                 if 'openconfig-network-instance:entries' in response:
                     mac_entries = response['openconfig-network-instance:entries']['entry']
                 else:
-                    print('No MAC entries present')
+                    print 'Error: '+str(response)
                     return
+            else:
+                return
         
         mac_table_list = [] 
         if func == 'get_openconfig_network_instance_network_instances_network_instance_fdb_mac_table_entries':
