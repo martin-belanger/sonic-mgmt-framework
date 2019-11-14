@@ -16,32 +16,28 @@ def invoke(func, args):
 
     if func == 'get_openconfig_ztp_ztp_state':
         path = cc.Path('/restconf/data/openconfig-ztp:ztp/state')
-	return aa.get(path)
+        return aa.get(path)
     else:
-	path = cc.Path('/restconf/data/openconfig-ztp:ztp/config')
-	if 'no' in sys.argv:
-	    body["openconfig-ztp:admin_mode"] = False 
+        path = cc.Path('/restconf/data/openconfig-ztp:ztp/config')
+        if 'no' in sys.argv:
+            body["openconfig-ztp:admin_mode"] = False 
         else:
-	    body["openconfig-ztp:admin_mode"] = True
+            body["openconfig-ztp:admin_mode"] = True
         return aa.post(path,body)
 
 
 
 def run(func, args):
     try:
-	api_response = invoke(func, args)
+        api_response = invoke(func, args)
         if api_response.ok():
-	    response = api_response.content
-	    if response is None:
-                print ("Success")
-            elif 'openconfig-ztp:state' in response.keys():
+            response = api_response.content
+            if 'openconfig-ztp:state' in response.keys():
                 value = response['openconfig-ztp:state']
-		if value is not None:
+                if value is not None:
                     show_cli_output(sys.argv[2],value)
-        else:
-            print('Success')
     except:
-	print("%Error: Transaction Failure")
+        print("%Error: Transaction Failure")
 
 if __name__ == '__main__':
 
