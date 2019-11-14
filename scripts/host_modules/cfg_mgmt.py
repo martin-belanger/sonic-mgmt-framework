@@ -17,7 +17,7 @@ class CFG_MGMT(host_service.HostModule):
             cmd.append(commands)
         
         for x in options: 
-            cmd.append(unicode(x)) 
+            cmd.append(str(x)) 
         output =""
         try:
             print("cmd", cmd)
