@@ -6,4 +6,5 @@ openconfig-ztp.yang
 openconfig-ztp-annot.yang
 openconfig-network-instance.yang
 openconfig-network-instance-annot.yang
-sonic-vxlan.yang
+openconfig-system.yang
+openconfig-system-annot.yang

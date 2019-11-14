@@ -82,7 +82,7 @@ class ZTP(host_service.HostModule):
         
 def register():
     """Return the class name"""
-    return ZTP
+    return ZTP, MOD_NAME
 
 
 
