@@ -1,0 +1,12 @@
+{{'-------------------------------------------------------------------'}}
+{{'%-5s'|format("TxQ")}}{{'%-15s'|format("Counter/pkts")}}{{'%-15s'|format("Counter/bytes")}}{{'%-12s'|format("Drop/pkts")}}{{'%-12s'|format("Drop/bytes")}}
+{{'-------------------------------------------------------------------'}}
+{% if json_output %}
+{% set q_stats_info = json_output %}
+{% set queue = q_stats_info['name'] %}
+{% set packets = q_stats_info['transmit-pkts'] %}
+{% set bytes = q_stats_info['transmit-octets'] %}
+{% set droppedPackets = q_stats_info['dropped-pkts'] %}
+{% set droppedBytes = 0 %}
+{{'%-5s'|format(queue)}}{{'%-15s'|format(packets)}}{{'%-15s'|format(bytes)}}{{'%-12s'|format(droppedPackets)}}{{'%-12s'|format(droppedBytes)}}
+{% endif %}
