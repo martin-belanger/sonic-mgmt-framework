@@ -1,0 +1,27 @@
+module openconfig-qos-ext {
+
+    yang-version "1";
+
+    // namespace
+    namespace "http://openconfig.net/yang/qos/extension";
+
+    prefix "oc-qos-ext";
+
+    import openconfig-qos { prefix oc-qos; }
+    import openconfig-qos-types { prefix oc-qos-types; }
+    import openconfig-yang-types { prefix oc-yang; }
+
+
+    grouping qos-dropped-octets {
+        leaf dropped-octets {
+            type oc-yang:counter64;
+            description
+                "Number of octets dropped by the queue due to overrun";
+        }
+    }
+
+    augment /oc-qos:qos/oc-qos:interfaces/oc-qos:interface/oc-qos:output/oc-qos:queues/oc-qos:queue/oc-qos:state {
+        uses qos-dropped-octets;
+    }
+
+}
