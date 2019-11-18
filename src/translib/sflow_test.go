@@ -64,12 +64,12 @@ func Test_sFlowOperations(t *testing.T) {
 
         // Set collector ip
         ipUrl := url + "/collector_ip"
-	t.Run("Set sFlow collector ip", processSetRequest(ipUrl, colIPJson, "PATCH", false))
+	t.Run("Set sFlow collector col1 ip", processSetRequest(ipUrl, colIPJson, "PATCH", false))
 	time.Sleep(1 * time.Second)
 
         // Set collector port
         portUrl := url + "/collector_port"
-	t.Run("Set sFlow collector ip", processSetRequest(portUrl, colPortJson, "PATCH", false))
+	t.Run("Set sFlow collector col1 port", processSetRequest(portUrl, colPortJson, "PATCH", false))
 	time.Sleep(1 * time.Second)
 
         // Verify collector configurations
