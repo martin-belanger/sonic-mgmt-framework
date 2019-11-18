@@ -10,7 +10,7 @@ import (
     "translib/ocbinds"
 )
 
-var queueCntList [] string = []string {"max-queue-len", "avg-queue-len", "transmit-pkts", "transmit-octets", "dropped-pkts"}
+var queueCntList [] string = []string {"max-queue-len", "avg-queue-len", "transmit-pkts", "transmit-octets", "dropped-pkts", "dropped-octets"}
 
 
 func init () {
@@ -130,6 +130,10 @@ func getQueueSpecificCounterAttr(targetUriPath string, entry *db.Value, counters
         e = getCounters(entry, "SAI_QUEUE_STAT_DROPPED_PACKETS", &counters.DroppedPkts)
         return true, e
 
+    case "/openconfig-qos:qos/interfaces/interface/output/queues/queue/state/dropped-octets":
+        e = getCounters(entry, "SAI_QUEUE_STAT_DROPPED_BYTES", &counters.DroppedOctets)
+        return true, e
+
     default:
         log.Infof(targetUriPath + " - Not an interface state counter attribute")
     }
@@ -175,6 +179,7 @@ var queueCounterIndexMap = map[string]int {
     "transmit-pkts"        : 3,
     "transmit-octets"      : 4,
     "dropped-pkts"         : 5, 
+    "dropped-octets"       : 6, 
 }
 
 var YangToDb_qos_q_counters_key KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {

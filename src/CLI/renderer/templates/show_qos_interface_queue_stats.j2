@@ -7,6 +7,6 @@
 {% set packets = q_stats_info['transmit-pkts'] %}
 {% set bytes = q_stats_info['transmit-octets'] %}
 {% set droppedPackets = q_stats_info['dropped-pkts'] %}
-{% set droppedBytes = 0 %}
+{% set droppedBytes = q_stats_info['openconfig-qos-ext:dropped-octets'] %}
 {{'%-5s'|format(queue)}}{{'%-15s'|format(packets)}}{{'%-15s'|format(bytes)}}{{'%-12s'|format(droppedPackets)}}{{'%-12s'|format(droppedBytes)}}
 {% endif %}
