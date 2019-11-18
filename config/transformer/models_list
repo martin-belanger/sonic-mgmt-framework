@@ -6,4 +6,5 @@ openconfig-network-instance.yang
 openconfig-network-instance-annot.yang
 sonic-vxlan.yang
 openconfig-qos.yang
+openconfig-qos-ext.yang
 openconfig-qos-annot.yang
