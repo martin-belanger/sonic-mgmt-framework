@@ -10,7 +10,7 @@ import (
     "translib/ocbinds"
 )
 
-var queueCntList [] string = []string {"max-queue-len", "avg-queue-len", "transmit-pkts", "transmit-octets", "dropped-pkts", "dropped-octets"}
+var queueCntList [] string = []string {/* Unsupported: "max-queue-len", "avg-queue-len",*/ "transmit-pkts", "transmit-octets", "dropped-pkts", "dropped-octets"}
 
 
 func init () {
@@ -108,15 +108,15 @@ func getQueueSpecificCounterAttr(targetUriPath string, entry *db.Value, counters
     var e error
 
     switch targetUriPath {
+    /* Not supported in SONIC
     case "/openconfig-qos:qos/interfaces/interface/output/queues/queue/state/max-queue-len":
-	// FIXME with new SONIC attributes!!
         e = getCounters(entry, "SAI_QUEUE_STAT_PACKETS", &counters.MaxQueueLen)
         return true, e
 
     case "/openconfig-qos:qos/interfaces/interface/output/queues/queue/state/avg-queue-len":
-	// FIXME with new SONIC attributes!
         e = getCounters(entry, "SAI_QUEUE_STAT_PACKETS", &counters.AvgQueueLen)
         return true, e
+    */
 
     case "/openconfig-qos:qos/interfaces/interface/output/queues/queue/state/transmit-pkts":
         e = getCounters(entry, "SAI_QUEUE_STAT_PACKETS", &counters.TransmitPkts)
@@ -135,7 +135,7 @@ func getQueueSpecificCounterAttr(targetUriPath string, entry *db.Value, counters
         return true, e
 
     default:
-        log.Infof(targetUriPath + " - Not an interface state counter attribute")
+        log.Infof(targetUriPath + " - Not an interface state counter attribute or unsupported")
     }
     return false, nil
 }
@@ -171,15 +171,6 @@ var populateQCounters PopulateQueueCounters = func (inParams XfmrParams, targetU
     }
 
     return err
-}
-
-var queueCounterIndexMap = map[string]int {
-    "max-queue-len"        : 1,
-    "avg-queue-len"        : 2,
-    "transmit-pkts"        : 3,
-    "transmit-octets"      : 4,
-    "dropped-pkts"         : 5, 
-    "dropped-octets"       : 6, 
 }
 
 var YangToDb_qos_q_counters_key KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
