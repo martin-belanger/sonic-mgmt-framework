@@ -77,13 +77,13 @@ BFD Peers:
 {% if key == 'multi-hop-state'%}
 {% set peerkey = '%s %s'|format(peerkey, 'multihop')%}
 {% endif %}
-{% if vars.localAddress != ''%}
+{% if vars.localAddress != 'null'%}
 {% set peerkey = '%s local-address %s'|format(peerkey, vars.localAddress)%}
 {% endif %}
 {% if vars.vrf != ''%}
 {% set peerkey = '%s vrf %s'|format(peerkey, vars.vrf)%}
 {% endif %}
-{% if vars.interface != ''%}
+{% if vars.interface != 'null'%}
 {% set peerkey = '%s interface %s'|format(peerkey, vars.interface)%}
 {% endif %}
 {{'%4s%s'|format(' ', peerkey)}}

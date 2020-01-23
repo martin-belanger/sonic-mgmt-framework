@@ -63,7 +63,7 @@ BFD Peers:
 {% if key == 'multi-hop-state'%}
 {% set peerkey = '%s %s'|format(peerkey, 'multihop')%}
 {% endif %}
-{% if vars.localAddress != ''%}
+{% if vars.localAddress != 'null'%}
 {% set peerkey = '%s local-address %s'|format(peerkey, vars.localAddress)%}
 {% endif %}
 {% if vars.vrf != ''%}
