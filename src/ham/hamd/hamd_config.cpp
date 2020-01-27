@@ -9,7 +9,7 @@
 #include "../shared/utils.h"    // true_false()
 
 
-static long long numberize(const char  * str_p, long long minval, long long maxval, const char ** errstr_pp = nullptr);
+static const char * numberize(const char  * str_p, long long minval, long long maxval, gint & retval_r);
 
 //******************************************************************************
 hamd_config_c::hamd_config_c(int argc, char **argv)
@@ -75,32 +75,23 @@ void hamd_config_c::reload()
             else if (nullptr != (s = startswith(p, "poll_period")))
             {
                 s += strspn(s, " \t=");            // Skip leading spaces and equal sign (=)
-                const char * errstr_p = nullptr;
-                poll_period_sec = (gint)numberize(s, 0, G_MAXINT, &errstr_p);
+                const char * errstr_p = numberize(s, 0, G_MAXINT, poll_period_sec);
                 if (errstr_p != nullptr)
-                {
                     syslog(LOG_ERR, "Error reading %s: poll_period %s (ignored)", conf_file_pm, errstr_p);
-                }
             }
             else if (nullptr != (s = startswith(p, "uid_min")))
             {
                 s += strspn(s, " \t=");            // Skip leading spaces and equal sign (=)
-                const char * errstr_p = nullptr;
-                sac_uid_min = (gint)numberize(s, 1000, G_MAXUINT, &errstr_p);
+                const char * errstr_p = numberize(s, 1000, G_MAXUINT, sac_uid_min);
                 if (errstr_p != nullptr)
-                {
                     syslog(LOG_ERR, "Error reading %s: uid_min %s (ignored)", conf_file_pm, errstr_p);
-                }
             }
             else if (nullptr != (s = startswith(p, "uid_max")))
             {
                 s += strspn(s, " \t=");            // Skip leading spaces and equal sign (=)
-                const char * errstr_p = nullptr;
-                sac_uid_max = (gint)numberize(s, 1000, G_MAXUINT, &errstr_p);
+                const char * errstr_p = numberize(s, 1000, G_MAXUINT, sac_uid_max);
                 if (errstr_p != nullptr)
-                {
                     syslog(LOG_ERR, "Error reading %s: uid_max %s (ignored)", conf_file_pm, errstr_p);
-                }
             }
             else if (nullptr != (s = startswith(p, "certgen")))
             {
@@ -217,18 +208,18 @@ static inline char * _startswith(const char *s, const char *prefix_p, size_t pre
  * @brief Convert a "string" to an integer value. Handles overflow and/or
  *        underflow.
  *
- * @param str_p   The string to convert
- * @param minval  Minimum acceptable value
- * @param maxval  Maximum acceptable value
- * @param err_p   A place where to return an error string indicating why
- *                the function failed.
+ * @param[in]  str_p     The string to convert
+ * @param[in]  minval    Minimum acceptable value
+ * @param[in]  maxval    Maximum acceptable value
+ * @param[out] retval_r  Return value
  *
- * @return str_p converted to a long long. On failure 0 is returned.
+ * @return nullptr on success. Otherwise, string indicating the failure
+ *         cause.
  */
-static long long numberize(const char  * str_p,
-                           long long     minval,
-                           long long     maxval,
-                           const char ** errstr_pp)
+static const char * numberize(const char  * str_p,
+                              long long     minval,
+                              long long     maxval,
+                              gint        & retval_r)
 {
     #define OK       0
     #define INVALID  1
@@ -241,7 +232,7 @@ static long long numberize(const char  * str_p,
         int          err;
     } table[] =
     {
-        { nullptr,        errno  }, // preserve current errno
+        { nullptr,     errno  }, // preserve current errno
         { "invalid",   EINVAL },
         { "too small", ERANGE },
         { "too large", ERANGE }
@@ -266,11 +257,14 @@ static long long numberize(const char  * str_p,
             result = TOOLARGE;
     }
 
-    if (errstr_pp != nullptr) *errstr_pp = table[result].str;
     errno = table[result].err;
 
-    return result != OK ? 0 : number;
+    if (result == OK)
+    {
+        retval_r = (gint)number;
+        return table[result].str;
+    }
+
+    return nullptr;
 }
-
-
 

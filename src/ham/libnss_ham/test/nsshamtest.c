@@ -80,15 +80,15 @@ bool role_member(const char * user, const char * role)
 
 int main(int argc, char *argv[])
 {
-    __nss_configure_lookup("passwd", "ham");
-    __nss_configure_lookup("group",  "ham");
-    __nss_configure_lookup("shadow", "ham");
+    __nss_configure_lookup("passwd", "ham"); // For NSS
+    __nss_configure_lookup("group",  "ham"); // For NSS
+    __nss_configure_lookup("shadow", "ham"); // For NSS to use the ham module (regardless of the content of /etc/nsswitch.conf)
 
     const char * users[] =
     {
         "mbelanger",
         "syslog",
-        "pipi",
+        "six-million-dollar-man",
         NULL
     };
 
@@ -96,7 +96,7 @@ int main(int argc, char *argv[])
     {
         "sudo",
         "adm",
-        "caca",
+        "master-of-the-universe",
         NULL
     };
 

@@ -54,7 +54,6 @@
 #   Shell program used when creating new users.
 #
 # type: string
-#shell=/usr/bin/sonic-cli
-#shell=/bin/bash
+#shell=/usr/bin/sonic-launch-shell
 
 
